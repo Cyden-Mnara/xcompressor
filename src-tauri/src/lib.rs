@@ -270,6 +270,41 @@ fn bootstrap_data() -> AppBootstrap {
 }
 
 #[tauri::command]
+fn open_media_in_system_player(path: String) -> Result<(), String> {
+  let input = PathBuf::from(&path);
+  if !input.exists() {
+    return Err("Video file does not exist.".into());
+  }
+
+  #[cfg(target_os = "linux")]
+  let mut command = {
+    let mut command = Command::new("xdg-open");
+    command.arg(&path);
+    command
+  };
+
+  #[cfg(target_os = "macos")]
+  let mut command = {
+    let mut command = Command::new("open");
+    command.arg(&path);
+    command
+  };
+
+  #[cfg(target_os = "windows")]
+  let mut command = {
+    let mut command = Command::new("cmd");
+    command.args(["/C", "start", "", &path]);
+    command
+  };
+
+  command
+    .spawn()
+    .map_err(|error| format!("Failed to open system video player: {error}"))?;
+
+  Ok(())
+}
+
+#[tauri::command]
 fn get_app_bootstrap() -> AppBootstrap {
   bootstrap_data()
 }
@@ -1465,6 +1500,7 @@ pub fn run() {
       get_app_bootstrap,
       plan_compression,
       analyze_resource_plan,
+      open_media_in_system_player,
       run_batch_jobs
     ])
     .setup(|app| {
