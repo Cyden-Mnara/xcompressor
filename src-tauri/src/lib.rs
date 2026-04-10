@@ -8,6 +8,7 @@ use std::{
   sync::{Arc, Mutex},
   thread,
 };
+use sysinfo::System;
 use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Clone, Serialize)]
@@ -195,6 +196,15 @@ struct ResourcePlan {
   jobs: Vec<ResourceJobEstimate>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LiveSystemMetrics {
+  cpu_usage_percent: f32,
+  used_memory_mb: u64,
+  available_memory_mb: u64,
+  total_memory_mb: u64,
+}
+
 #[derive(Debug)]
 struct PresetProfile {
   video_crf: u8,
@@ -307,6 +317,23 @@ fn open_media_in_system_player(path: String) -> Result<(), String> {
 #[tauri::command]
 fn get_app_bootstrap() -> AppBootstrap {
   bootstrap_data()
+}
+
+#[tauri::command]
+fn get_live_system_metrics() -> LiveSystemMetrics {
+  let mut system = System::new_all();
+  system.refresh_cpu_all();
+  system.refresh_memory();
+  std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+  system.refresh_cpu_usage();
+  system.refresh_memory();
+
+  LiveSystemMetrics {
+    cpu_usage_percent: system.global_cpu_usage(),
+    used_memory_mb: system.used_memory() / (1024 * 1024),
+    available_memory_mb: system.available_memory() / (1024 * 1024),
+    total_memory_mb: system.total_memory() / (1024 * 1024),
+  }
 }
 
 #[tauri::command]
@@ -1498,6 +1525,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       get_app_bootstrap,
+      get_live_system_metrics,
       plan_compression,
       analyze_resource_plan,
       open_media_in_system_player,

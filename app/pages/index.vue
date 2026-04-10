@@ -77,6 +77,13 @@ type ResourcePlan = {
   jobs: ResourceJobEstimate[]
 }
 
+type LiveSystemMetrics = {
+  cpuUsagePercent: number
+  usedMemoryMb: number
+  availableMemoryMb: number
+  totalMemoryMb: number
+}
+
 type QueueProgress = {
   jobId: string
   label: string | null
@@ -157,6 +164,7 @@ const processing = ref(false)
 const bootstrap = ref<BootstrapData | null>(null)
 const resourcePlan = ref<ResourcePlan | null>(null)
 const resourcePlanLoading = ref(false)
+const liveSystemMetrics = ref<LiveSystemMetrics | null>(null)
 const activePreset = computed(() => bootstrap.value?.presets.find(preset => preset.id === presetId.value))
 const videoFiles = computed(() => files.value.filter(path => detectKind(path) === 'video'))
 const videoFileOptions = computed(() =>
@@ -242,6 +250,7 @@ const estimatedMinutesLabel = computed(() => {
 })
 
 let unlistenBatchProgress: null | (() => void) = null
+let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -468,6 +477,31 @@ async function refreshResourcePlan() {
   }
 }
 
+async function refreshLiveSystemMetrics() {
+  try {
+    liveSystemMetrics.value = await tauriInvoke<LiveSystemMetrics>('get_live_system_metrics')
+  } catch {
+    liveSystemMetrics.value = null
+  }
+}
+
+function startLiveMetricsPolling() {
+  if (liveMetricsInterval) {
+    clearInterval(liveMetricsInterval)
+  }
+
+  liveMetricsInterval = setInterval(() => {
+    void refreshLiveSystemMetrics()
+  }, 1500)
+}
+
+function stopLiveMetricsPolling() {
+  if (liveMetricsInterval) {
+    clearInterval(liveMetricsInterval)
+    liveMetricsInterval = null
+  }
+}
+
 function buildGifSegmentLabel(inputPath: string, index: number) {
   return `${basename(inputPath)} clip ${index + 1}`
 }
@@ -681,10 +715,13 @@ onMounted(async () => {
   await updateSelectedGifVideoSrc()
   await registerBatchListener()
   await refreshResourcePlan()
+  await refreshLiveSystemMetrics()
+  startLiveMetricsPolling()
 })
 
 onBeforeUnmount(() => {
   unlistenBatchProgress?.()
+  stopLiveMetricsPolling()
 })
 
 watch(mode, async () => {
@@ -1329,23 +1366,23 @@ function onGifVideoError() {
               <div class="grid grid-cols-2 gap-3">
                 <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
                   <p class="text-xs text-stone-500">
-                    CPU
+                    Live CPU
                   </p>
                   <p class="mt-1 text-lg font-semibold text-white">
-                    {{ resourcePlan?.logicalCores ?? 'n/a' }}
+                    {{ liveSystemMetrics ? `${Math.round(liveSystemMetrics.cpuUsagePercent)}%` : 'n/a' }}
                   </p>
                 </div>
                 <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
                   <p class="text-xs text-stone-500">
-                    RAM
+                    Live RAM
                   </p>
                   <p class="mt-1 text-lg font-semibold text-white">
-                    {{ resourcePlan?.availableMemoryMb ? `${resourcePlan.availableMemoryMb} MB` : 'n/a' }}
+                    {{ liveSystemMetrics ? `${liveSystemMetrics.usedMemoryMb} MB` : 'n/a' }}
                   </p>
                 </div>
                 <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
                   <p class="text-xs text-stone-500">
-                    Parallel RAM
+                    Planned RAM
                   </p>
                   <p class="mt-1 text-lg font-semibold text-white">
                     {{ resourcePlan?.estimatedParallelMemoryMb ? `${resourcePlan.estimatedParallelMemoryMb} MB` : 'n/a' }}
@@ -1369,6 +1406,9 @@ function onGifVideoError() {
                 />
                 <p class="text-xs leading-6 text-stone-400">
                   Jobs {{ resourcePlan?.jobs.length ?? runQueueCount }} • requested {{ effectiveParallelJobs }} • safe {{ resourcePlan?.safeParallelJobs ?? 1 }}
+                </p>
+                <p class="text-xs leading-6 text-stone-400">
+                  Available RAM {{ liveSystemMetrics ? `${liveSystemMetrics.availableMemoryMb} MB` : 'n/a' }}
                 </p>
               </div>
 
