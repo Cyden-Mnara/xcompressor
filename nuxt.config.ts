@@ -6,7 +6,9 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxt/ui'
   ],
-
+   devServer: {
+    port: 3124,
+  },
   devtools: {
     enabled: true
   },
