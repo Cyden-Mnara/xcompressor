@@ -36,6 +36,7 @@ type BatchJobResult = {
   outputPath: string | null
   success: boolean
   skipped: boolean
+  cancelled: boolean
   ffmpegArgs: string[]
   message: string
 }
@@ -161,6 +162,8 @@ const selectedGifVideoDuration = ref(0)
 const gifPreviewError = ref('')
 const gifPreviewVideo = ref<HTMLVideoElement | null>(null)
 const processing = ref(false)
+const cancelPending = ref(false)
+const currentRunId = ref('')
 const bootstrap = ref<BootstrapData | null>(null)
 const resourcePlan = ref<ResourcePlan | null>(null)
 const resourcePlanLoading = ref(false)
@@ -234,10 +237,49 @@ const overallProgress = computed(() => {
   return Math.round(total / progressKeys.length)
 })
 const completedJobs = computed(() =>
-  Object.values(queueProgress.value).filter(item => ['completed', 'failed', 'skipped'].includes(item.status)).length
+  Object.values(queueProgress.value).filter(item => isTerminalStatus(item.status)).length
 )
+const remainingJobCount = computed(() => {
+  const estimateJobs = resourcePlan.value?.jobs ?? []
+  return estimateJobs.filter(job => {
+    const status = queueProgress.value[job.jobId]?.status
+    return !isTerminalStatus(status)
+  }).length
+})
+const estimatedRemainingSeconds = computed(() => {
+  const plan = resourcePlan.value
+  if (!plan) {
+    return 0
+  }
+
+  if (!processing.value) {
+    return plan.estimatedParallelSeconds ?? 0
+  }
+
+  const jobs = plan.jobs ?? []
+  if (!jobs.length) {
+    return 0
+  }
+
+  const remainingWorkSeconds = jobs.reduce((sum, job) => {
+    const progress = queueProgress.value[job.jobId]
+    if (!progress || progress.status === 'queued') {
+      return sum + job.estimatedSeconds
+    }
+
+    if (isTerminalStatus(progress.status)) {
+      return sum
+    }
+
+    const ratio = Math.min(Math.max(progress.progressPercent, 0), 100) / 100
+    return sum + (job.estimatedSeconds * (1 - ratio))
+  }, 0)
+
+  const parallelSlots = Math.max(Math.min(effectiveParallelJobs.value, remainingJobCount.value || 1), 1)
+  return Math.ceil(remainingWorkSeconds / parallelSlots)
+})
 const estimatedMinutesLabel = computed(() => {
-  const seconds = resourcePlan.value?.estimatedParallelSeconds ?? 0
+  const seconds = estimatedRemainingSeconds.value
   if (!seconds) {
     return 'n/a'
   }
@@ -248,6 +290,7 @@ const estimatedMinutesLabel = computed(() => {
 
   return `${Math.ceil(seconds / 60)} min`
 })
+const etaCaption = computed(() => processing.value ? 'Remaining ETA' : 'Planned ETA')
 
 let unlistenBatchProgress: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
@@ -422,6 +465,7 @@ function clearQueue() {
 function clearCurrentRunState() {
   results.value = []
   queueProgress.value = {}
+  cancelPending.value = false
 }
 
 function updateQueueProgress(event: BatchProgressEvent) {
@@ -439,6 +483,26 @@ function updateQueueProgress(event: BatchProgressEvent) {
       speed: event.speed
     }
   }
+}
+
+function isTerminalStatus(status: string | undefined) {
+  return ['completed', 'failed', 'skipped', 'cancelled'].includes(status ?? '')
+}
+
+function statusColor(status: string | undefined) {
+  if (status === 'completed') {
+    return 'success'
+  }
+
+  if (status === 'failed') {
+    return 'error'
+  }
+
+  if (status === 'cancelled' || status === 'skipped') {
+    return 'warning'
+  }
+
+  return 'primary'
 }
 
 async function loadBootstrap() {
@@ -610,8 +674,10 @@ async function registerBatchListener() {
 }
 
 async function runBatch() {
-  processing.value = true
   clearCurrentRunState()
+  currentRunId.value = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  processing.value = true
+  cancelPending.value = false
   queueProgress.value = activityQueue.value.length
     ? Object.fromEntries(
         activityQueue.value.map(job => [job.jobId, {
@@ -657,6 +723,7 @@ async function runBatch() {
   try {
     const response = await tauriInvoke<{ results: BatchJobResult[] }>('run_batch_jobs', {
       request: {
+        runId: currentRunId.value,
         inputPaths: files.value,
         outputDir: outputDir.value,
         mode: mode.value,
@@ -689,11 +756,28 @@ async function runBatch() {
       outputPath: null,
       success: false,
       skipped: false,
+      cancelled: false,
       ffmpegArgs: [],
       message: String(error)
     }]
   } finally {
     processing.value = false
+    cancelPending.value = false
+    currentRunId.value = ''
+  }
+}
+
+async function cancelBatch() {
+  if (!processing.value || !currentRunId.value || cancelPending.value) {
+    return
+  }
+
+  cancelPending.value = true
+
+  try {
+    await tauriInvoke('cancel_batch_run', { runId: currentRunId.value })
+  } catch {
+    cancelPending.value = false
   }
 }
 
@@ -955,6 +1039,19 @@ function onGifVideoError() {
                 </UButton>
               </div>
 
+              <UButton
+                v-if="processing"
+                block
+                size="lg"
+                color="warning"
+                variant="soft"
+                icon="i-lucide-square"
+                :loading="cancelPending"
+                @click="cancelBatch"
+              >
+                {{ cancelPending ? 'Stopping batch...' : 'Cancel running batch' }}
+              </UButton>
+
               <p v-if="mode === 'gif' && !gifQueue.length" class="text-sm leading-6 text-amber-300">
                 Add at least one GIF clip before running export.
               </p>
@@ -1206,7 +1303,7 @@ function onGifVideoError() {
                     <UBadge color="neutral" variant="soft" :label="detectKind(job.inputPath)" />
                     <UBadge
                       v-if="mixedJobProgress(job)"
-                      :color="mixedJobProgress(job)?.status === 'completed' ? 'success' : (mixedJobProgress(job)?.status === 'failed' ? 'error' : 'primary')"
+                      :color="statusColor(mixedJobProgress(job)?.status)"
                       variant="soft"
                       :label="mixedJobProgress(job)?.status || 'queued'"
                     />
@@ -1294,7 +1391,7 @@ function onGifVideoError() {
                     />
                     <UBadge
                       v-if="queueItemProgress(item)"
-                      :color="queueItemProgress(item)?.status === 'completed' ? 'success' : (queueItemProgress(item)?.status === 'failed' ? 'error' : 'primary')"
+                      :color="statusColor(queueItemProgress(item)?.status)"
                       variant="soft"
                       :label="queueItemProgress(item)?.status || 'queued'"
                     />
@@ -1390,7 +1487,7 @@ function onGifVideoError() {
                 </div>
                 <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
                   <p class="text-xs text-stone-500">
-                    ETA
+                    {{ etaCaption }}
                   </p>
                   <p class="mt-1 text-lg font-semibold text-white">
                     {{ estimatedMinutesLabel }}
@@ -1399,6 +1496,16 @@ function onGifVideoError() {
               </div>
 
               <div class="flex flex-wrap items-center gap-3">
+                <UButton
+                  v-if="processing"
+                  color="warning"
+                  variant="soft"
+                  icon="i-lucide-square"
+                  :loading="cancelPending"
+                  @click="cancelBatch"
+                >
+                  {{ cancelPending ? 'Stopping...' : 'Cancel batch' }}
+                </UButton>
                 <UBadge
                   :color="resourcePlan?.canRunInParallel === false ? 'warning' : 'success'"
                   variant="soft"
@@ -1457,6 +1564,9 @@ function onGifVideoError() {
                 <span v-else>
                   {{ completedJobs }}/{{ files.length || 0 }} jobs finished.
                 </span>
+                <span v-if="cancelPending" class="text-amber-300">
+                  Cancellation requested. Active FFmpeg jobs are being stopped.
+                </span>
               </p>
 
               <div class="h-3 overflow-hidden rounded-full bg-white/8">
@@ -1493,13 +1603,13 @@ function onGifVideoError() {
                 v-for="result in results"
                 :key="result.jobId"
                 class="rounded-2xl border p-3"
-                :class="result.success ? 'border-emerald-500/30 bg-emerald-500/8' : 'border-rose-500/30 bg-rose-500/8'"
+                :class="result.success ? 'border-emerald-500/30 bg-emerald-500/8' : (result.cancelled || result.skipped ? 'border-amber-500/30 bg-amber-500/8' : 'border-rose-500/30 bg-rose-500/8')"
               >
                 <div class="flex flex-wrap items-center gap-2">
                   <UBadge
-                    :color="result.success ? 'success' : 'error'"
+                    :color="result.success ? 'success' : (result.cancelled || result.skipped ? 'warning' : 'error')"
                     variant="soft"
-                    :label="result.success ? 'success' : (result.skipped ? 'skipped' : 'failed')"
+                    :label="result.success ? 'success' : (result.cancelled ? 'cancelled' : (result.skipped ? 'skipped' : 'failed'))"
                   />
                   <UBadge color="neutral" variant="soft" :label="result.mediaKind" />
                   <p class="text-sm font-medium text-white">

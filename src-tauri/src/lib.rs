@@ -1,15 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::{
-  collections::VecDeque,
+  collections::{HashMap, VecDeque},
   fs,
   io::{BufRead, BufReader, Read},
   path::{Path, PathBuf},
   process::{Command, Stdio},
-  sync::{Arc, Mutex},
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+  },
   thread,
 };
 use sysinfo::System;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +92,7 @@ struct GifSegmentRequest {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BatchProcessRequest {
+  run_id: String,
   input_paths: Vec<String>,
   output_dir: String,
   mode: String,
@@ -133,6 +137,7 @@ struct BatchJobResult {
   output_path: Option<String>,
   success: bool,
   skipped: bool,
+  cancelled: bool,
   ffmpeg_args: Vec<String>,
   message: String,
 }
@@ -203,6 +208,58 @@ struct LiveSystemMetrics {
   used_memory_mb: u64,
   available_memory_mb: u64,
   total_memory_mb: u64,
+}
+
+#[derive(Default)]
+struct AppState {
+  batch_runs: Arc<Mutex<HashMap<String, Arc<BatchRunControl>>>>,
+}
+
+#[derive(Default)]
+struct BatchRunControl {
+  cancelled: AtomicBool,
+  processes: Mutex<HashMap<String, u32>>,
+}
+
+impl BatchRunControl {
+  fn is_cancelled(&self) -> bool {
+    self.cancelled.load(Ordering::SeqCst)
+  }
+
+  fn mark_cancelled(&self) {
+    self.cancelled.store(true, Ordering::SeqCst);
+  }
+
+  fn register_process(&self, job_id: &str, pid: u32) {
+    self
+      .processes
+      .lock()
+      .expect("batch process mutex poisoned")
+      .insert(job_id.to_string(), pid);
+  }
+
+  fn unregister_process(&self, job_id: &str) {
+    self
+      .processes
+      .lock()
+      .expect("batch process mutex poisoned")
+      .remove(job_id);
+  }
+
+  fn process_ids(&self) -> Vec<u32> {
+    self
+      .processes
+      .lock()
+      .expect("batch process mutex poisoned")
+      .values()
+      .copied()
+      .collect()
+  }
+}
+
+enum RunFfmpegError {
+  Failed(String),
+  Cancelled,
 }
 
 #[derive(Debug)]
@@ -606,6 +663,60 @@ fn default_job_id(input_path: &str, operation: &str) -> String {
   format!("{operation}::{input_path}")
 }
 
+fn cancelled_batch_result(
+  job_id: String,
+  label: Option<String>,
+  input_path: String,
+  media_kind: String,
+  operation: String,
+  output_path: Option<String>,
+  ffmpeg_args: Vec<String>,
+) -> BatchJobResult {
+  BatchJobResult {
+    job_id,
+    label,
+    input_path,
+    media_kind,
+    operation,
+    output_path,
+    success: false,
+    skipped: false,
+    cancelled: true,
+    ffmpeg_args,
+    message: "Cancelled by user.".into(),
+  }
+}
+
+fn terminate_process(pid: u32) -> Result<(), String> {
+  #[cfg(target_os = "windows")]
+  {
+    let status = Command::new("taskkill")
+      .args(["/PID", &pid.to_string(), "/T", "/F"])
+      .status()
+      .map_err(|error| format!("Failed to terminate ffmpeg process {pid}: {error}"))?;
+
+    if status.success() {
+      Ok(())
+    } else {
+      Err(format!("taskkill failed for ffmpeg process {pid}."))
+    }
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  {
+    let status = Command::new("kill")
+      .args(["-TERM", &pid.to_string()])
+      .status()
+      .map_err(|error| format!("Failed to terminate ffmpeg process {pid}: {error}"))?;
+
+    if status.success() {
+      Ok(())
+    } else {
+      Err(format!("kill failed for ffmpeg process {pid}."))
+    }
+  }
+}
+
 fn read_meminfo_value(field: &str) -> Option<u64> {
   let contents = fs::read_to_string("/proc/meminfo").ok()?;
   contents.lines().find_map(|line| {
@@ -792,6 +903,7 @@ fn analyze_resource_plan(request: ResourcePlanRequest) -> ResourcePlan {
 
 fn mixed_job_to_request(job: &MixedJobRequest) -> BatchProcessRequest {
   BatchProcessRequest {
+    run_id: format!("mixed::{}", job.job_id),
     input_paths: vec![job.input_path.clone()],
     output_dir: job.output_dir.clone(),
     mode: job.mode.clone(),
@@ -810,6 +922,33 @@ fn mixed_job_to_request(job: &MixedJobRequest) -> BatchProcessRequest {
 
 fn emit_batch_progress(app: &AppHandle, event: BatchProgressEvent) {
   let _ = app.emit("batch-progress", event);
+}
+
+fn emit_cancelled_progress(
+  app: &AppHandle,
+  job_id: &str,
+  label: Option<&str>,
+  input_path: &str,
+  media_kind: &str,
+  operation: &str,
+  output_path: Option<&Path>,
+  progress_percent: Option<f64>,
+) {
+  emit_batch_progress(
+    app,
+    BatchProgressEvent {
+      job_id: job_id.into(),
+      label: label.map(str::to_string),
+      input_path: input_path.into(),
+      media_kind: media_kind.into(),
+      operation: operation.into(),
+      status: "cancelled".into(),
+      progress_percent,
+      output_path: output_path.map(|path| path.display().to_string()),
+      message: "Cancelled by user.".into(),
+      speed: None,
+    },
+  );
 }
 
 fn probe_duration_seconds(input_path: &Path) -> Option<f64> {
@@ -848,6 +987,7 @@ fn extract_progress_percent(out_time_us: i64, duration_seconds: Option<f64>) -> 
 
 fn run_ffmpeg(
   app: &AppHandle,
+  run_control: &BatchRunControl,
   job_id: &str,
   label: Option<&str>,
   input_path: &str,
@@ -857,7 +997,21 @@ fn run_ffmpeg(
   args: &[String],
   overwrite: bool,
   duration_seconds: Option<f64>,
-) -> Result<String, String> {
+) -> Result<String, RunFfmpegError> {
+  if run_control.is_cancelled() {
+    emit_cancelled_progress(
+      app,
+      job_id,
+      label,
+      input_path,
+      media_kind,
+      operation,
+      Some(output_path),
+      Some(0.0),
+    );
+    return Err(RunFfmpegError::Cancelled);
+  }
+
   let mut command = Command::new("ffmpeg");
   if overwrite {
     command.arg("-y");
@@ -874,7 +1028,8 @@ fn run_ffmpeg(
 
   let mut child = command
     .spawn()
-    .map_err(|error| format!("Failed to run ffmpeg: {error}"))?;
+    .map_err(|error| RunFfmpegError::Failed(format!("Failed to run ffmpeg: {error}")))?;
+  run_control.register_process(job_id, child.id());
 
   emit_batch_progress(
     app,
@@ -895,7 +1050,7 @@ fn run_ffmpeg(
   let stderr = child
     .stderr
     .take()
-    .ok_or_else(|| "Failed to capture ffmpeg stderr.".to_string())?;
+    .ok_or_else(|| RunFfmpegError::Failed("Failed to capture ffmpeg stderr.".to_string()))?;
   let stderr_handle = thread::spawn(move || {
     let mut stderr = BufReader::new(stderr);
     let mut buffer = String::new();
@@ -906,14 +1061,19 @@ fn run_ffmpeg(
   let stdout = child
     .stdout
     .take()
-    .ok_or_else(|| "Failed to capture ffmpeg stdout.".to_string())?;
+    .ok_or_else(|| RunFfmpegError::Failed("Failed to capture ffmpeg stdout.".to_string()))?;
   let reader = BufReader::new(stdout);
   let mut last_out_time_us = 0_i64;
   let mut last_speed: Option<String> = None;
   let mut last_percent = 0.0_f64;
 
   for line_result in reader.lines() {
-    let line = line_result.map_err(|error| format!("Failed to read ffmpeg progress: {error}"))?;
+    if run_control.is_cancelled() {
+      let _ = child.kill();
+    }
+
+    let line = line_result
+      .map_err(|error| RunFfmpegError::Failed(format!("Failed to read ffmpeg progress: {error}")))?;
     let Some((key, value)) = line.split_once('=') else {
       continue;
     };
@@ -959,11 +1119,26 @@ fn run_ffmpeg(
 
   let status = child
     .wait()
-    .map_err(|error| format!("Failed to wait for ffmpeg: {error}"))?;
+    .map_err(|error| RunFfmpegError::Failed(format!("Failed to wait for ffmpeg: {error}")))?;
+  run_control.unregister_process(job_id);
   let stderr = stderr_handle
     .join()
-    .map_err(|_| "Failed to join ffmpeg stderr reader.".to_string())?;
+    .map_err(|_| RunFfmpegError::Failed("Failed to join ffmpeg stderr reader.".to_string()))?;
   let stderr = stderr.trim().to_string();
+
+  if run_control.is_cancelled() {
+    emit_cancelled_progress(
+      app,
+      job_id,
+      label,
+      input_path,
+      media_kind,
+      operation,
+      Some(output_path),
+      Some(last_percent),
+    );
+    return Err(RunFfmpegError::Cancelled);
+  }
 
   if status.success() {
     emit_batch_progress(
@@ -1006,16 +1181,17 @@ fn run_ffmpeg(
         speed: last_speed,
       },
     );
-    Err(if stderr.is_empty() {
+    Err(RunFfmpegError::Failed(if stderr.is_empty() {
       "ffmpeg exited with a non-zero status.".into()
     } else {
       stderr
-    })
+    }))
   }
 }
 
 fn process_single_job(
   app: &AppHandle,
+  run_control: &BatchRunControl,
   input_path: &str,
   request: &BatchProcessRequest,
   gif_segment: Option<&GifSegmentRequest>,
@@ -1029,6 +1205,28 @@ fn process_single_job(
     .map(|segment| segment.job_id.clone())
     .unwrap_or_else(|| default_job_id(input_path, &mode));
   let label = gif_segment.and_then(|segment| segment.label.clone());
+
+  if run_control.is_cancelled() {
+    emit_cancelled_progress(
+      app,
+      &job_id,
+      label.as_deref(),
+      input_path,
+      &media_kind,
+      &mode,
+      None,
+      Some(0.0),
+    );
+    return cancelled_batch_result(
+      job_id,
+      label,
+      input_path.into(),
+      media_kind,
+      mode,
+      None,
+      vec![],
+    );
+  }
 
   if !input.exists() {
     emit_batch_progress(
@@ -1055,6 +1253,7 @@ fn process_single_job(
       output_path: None,
       success: false,
       skipped: false,
+      cancelled: false,
       ffmpeg_args: vec![],
       message: "Input file does not exist.".into(),
     };
@@ -1085,6 +1284,7 @@ fn process_single_job(
       output_path: None,
       success: false,
       skipped: true,
+      cancelled: false,
       ffmpeg_args: vec![],
       message: "Unsupported media type for this batch.".into(),
     };
@@ -1117,6 +1317,7 @@ fn process_single_job(
       output_path: None,
       success: false,
       skipped: false,
+      cancelled: false,
       ffmpeg_args: vec![],
       message,
     };
@@ -1148,6 +1349,7 @@ fn process_single_job(
         output_path: None,
         success: false,
         skipped: true,
+        cancelled: false,
         ffmpeg_args: vec![],
         message: "GIF generation is only available for video inputs.".into(),
       };
@@ -1198,6 +1400,7 @@ fn process_single_job(
           output_path: None,
           success: false,
           skipped: false,
+          cancelled: false,
           ffmpeg_args: vec![],
           message,
         };
@@ -1235,6 +1438,7 @@ fn process_single_job(
           output_path: None,
           success: false,
           skipped: false,
+          cancelled: false,
           ffmpeg_args: vec![],
           message,
         };
@@ -1275,6 +1479,7 @@ fn process_single_job(
           output_path: None,
           success: false,
           skipped: false,
+          cancelled: false,
           ffmpeg_args: vec![],
           message,
         };
@@ -1290,6 +1495,7 @@ fn process_single_job(
 
   match run_ffmpeg(
     app,
+    run_control,
     &job_id,
     label.as_deref(),
     input_path,
@@ -1309,10 +1515,20 @@ fn process_single_job(
       output_path: Some(output_path.display().to_string()),
       success: true,
       skipped: false,
+      cancelled: false,
       ffmpeg_args,
       message,
     },
-    Err(message) => BatchJobResult {
+    Err(RunFfmpegError::Cancelled) => cancelled_batch_result(
+      job_id,
+      label,
+      input_path.into(),
+      media_kind,
+      mode,
+      Some(output_path.display().to_string()),
+      ffmpeg_args,
+    ),
+    Err(RunFfmpegError::Failed(message)) => BatchJobResult {
       job_id,
       label,
       input_path: input_path.into(),
@@ -1321,13 +1537,14 @@ fn process_single_job(
       output_path: Some(output_path.display().to_string()),
       success: false,
       skipped: false,
+      cancelled: false,
       ffmpeg_args,
       message,
     },
   }
 }
 
-fn process_mixed_job(app: &AppHandle, job: &MixedJobRequest) -> BatchJobResult {
+fn process_mixed_job(app: &AppHandle, run_control: &BatchRunControl, job: &MixedJobRequest) -> BatchJobResult {
   let request = mixed_job_to_request(job);
   let gif_segment = if job.mode.eq_ignore_ascii_case("gif") {
     let gif = job.gif.clone().unwrap_or(GifOptions {
@@ -1354,7 +1571,7 @@ fn process_mixed_job(app: &AppHandle, job: &MixedJobRequest) -> BatchJobResult {
     None
   };
 
-  let mut result = process_single_job(app, &job.input_path, &request, gif_segment.as_ref());
+  let mut result = process_single_job(app, run_control, &job.input_path, &request, gif_segment.as_ref());
   result.job_id = job.job_id.clone();
   if job.label.is_some() {
     result.label = job.label.clone();
@@ -1362,7 +1579,11 @@ fn process_mixed_job(app: &AppHandle, job: &MixedJobRequest) -> BatchJobResult {
   result
 }
 
-fn execute_batch(app: AppHandle, request: BatchProcessRequest) -> Result<BatchProcessResponse, String> {
+fn execute_batch(
+  app: AppHandle,
+  request: BatchProcessRequest,
+  run_control: Arc<BatchRunControl>,
+) -> Result<BatchProcessResponse, String> {
   let mixed_jobs = request.mixed_jobs.clone().unwrap_or_default();
   let gif_segments = if request.mode.eq_ignore_ascii_case("gif") {
     request.gif_segments.clone().unwrap_or_default()
@@ -1475,6 +1696,7 @@ fn execute_batch(app: AppHandle, request: BatchProcessRequest) -> Result<BatchPr
     let queue = Arc::clone(&queue);
     let results = Arc::clone(&results);
     let request = Arc::clone(&shared_request);
+    let run_control = Arc::clone(&run_control);
     handles.push(thread::spawn(move || loop {
       let next_item = {
         let mut queue = queue.lock().expect("queue mutex poisoned");
@@ -1484,9 +1706,9 @@ fn execute_batch(app: AppHandle, request: BatchProcessRequest) -> Result<BatchPr
       match next_item {
         Some((index, path, gif_segment, mixed_job)) => {
           let result = if let Some(mixed_job) = mixed_job.as_ref() {
-            process_mixed_job(&app, mixed_job)
+            process_mixed_job(&app, &run_control, mixed_job)
           } else {
-            process_single_job(&app, &path, &request, gif_segment.as_ref())
+            process_single_job(&app, &run_control, &path, &request, gif_segment.as_ref())
           };
           results
             .lock()
@@ -1513,15 +1735,57 @@ fn execute_batch(app: AppHandle, request: BatchProcessRequest) -> Result<BatchPr
 }
 
 #[tauri::command]
-async fn run_batch_jobs(app: AppHandle, request: BatchProcessRequest) -> Result<BatchProcessResponse, String> {
-  tauri::async_runtime::spawn_blocking(move || execute_batch(app, request))
+fn cancel_batch_run(state: State<AppState>, run_id: String) -> Result<(), String> {
+  let run_control = {
+    let runs = state
+      .batch_runs
+      .lock()
+      .map_err(|_| "Batch run registry is unavailable.".to_string())?;
+    runs
+      .get(&run_id)
+      .cloned()
+      .ok_or_else(|| "No active batch run matches that id.".to_string())?
+  };
+
+  run_control.mark_cancelled();
+  for pid in run_control.process_ids() {
+    let _ = terminate_process(pid);
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+async fn run_batch_jobs(
+  app: AppHandle,
+  state: State<'_, AppState>,
+  request: BatchProcessRequest,
+) -> Result<BatchProcessResponse, String> {
+  let run_id = request.run_id.clone();
+  let batch_runs = Arc::clone(&state.batch_runs);
+  let run_control = Arc::new(BatchRunControl::default());
+  {
+    let mut runs = batch_runs
+      .lock()
+      .map_err(|_| "Batch run registry is unavailable.".to_string())?;
+    runs.insert(run_id.clone(), Arc::clone(&run_control));
+  }
+
+  let result = tauri::async_runtime::spawn_blocking(move || execute_batch(app, request, run_control))
     .await
-    .map_err(|error| format!("Batch worker join error: {error}"))?
+    .map_err(|error| format!("Batch worker join error: {error}"))?;
+
+  if let Ok(mut runs) = batch_runs.lock() {
+    runs.remove(&run_id);
+  }
+
+  Ok(result?)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .manage(AppState::default())
     .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       get_app_bootstrap,
@@ -1529,6 +1793,7 @@ pub fn run() {
       plan_compression,
       analyze_resource_plan,
       open_media_in_system_player,
+      cancel_batch_run,
       run_batch_jobs
     ])
     .setup(|app| {
