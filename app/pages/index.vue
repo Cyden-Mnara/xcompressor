@@ -218,7 +218,7 @@ const overallProgress = computed(() => {
     ? activityQueue.value.map(job => job.jobId)
     : mode.value === 'gif'
       ? gifQueue.value.map(segment => segment.jobId)
-      : files.value
+      : files.value.map(path => batchJobId(path, mode.value))
   if (!progressKeys.length) {
     return 0
   }
@@ -269,8 +269,12 @@ function targetFormats(kind: string) {
   return bootstrap.value?.formatTargets.find(target => target.kind === kind)?.targets ?? []
 }
 
+function batchJobId(path: string, operation: string) {
+  return `${operation}::${path}`
+}
+
 function queueItemKey(item: QueueItem) {
-  return typeof item === 'string' ? item : item.jobId
+  return typeof item === 'string' ? batchJobId(item, mode.value) : item.jobId
 }
 
 function queueItemProgress(item: QueueItem) {
@@ -603,8 +607,8 @@ async function runBatch() {
           } satisfies QueueProgress])
         )
       : Object.fromEntries(
-          files.value.map(path => [path, {
-          jobId: path,
+          files.value.map(path => [batchJobId(path, mode.value), {
+          jobId: batchJobId(path, mode.value),
           label: basename(path),
           mediaKind: detectKind(path),
           operation: mode.value,
