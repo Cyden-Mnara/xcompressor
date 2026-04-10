@@ -75,14 +75,19 @@ The application exposes these command entry points:
 - `get_app_bootstrap`
 - `plan_compression`
 - `analyze_resource_plan`
+- `check_for_app_update`
+- `install_app_update`
+- `cancel_batch_run`
 - `open_media_in_system_player`
 - `run_batch_jobs`
 
 ### Backend responsibilities
 
 - expose frontend bootstrap metadata
+- check and install signed application updates from GitHub Releases
 - analyze planned workload against available system resources
 - build FFmpeg argument lists by media kind and operation
+- resolve bundled FFmpeg / FFprobe binaries inside packaged builds
 - manage parallel execution with worker threads
 - emit batch progress events back to the frontend
 - return structured per-job results
@@ -181,12 +186,14 @@ The GitHub workflow in [.github/workflows/build-desktop.yml](../.github/workflow
 - Windows artifacts
 - macOS artifacts
 
+Tagged releases are published through [.github/workflows/publish-release.yml](../.github/workflows/publish-release.yml), which uploads signed updater artifacts to GitHub Releases.
+
 ## Current Architectural Constraints
 
 - most frontend logic is still in a single page component
 - preview playback depends on webview codec support
 - resource planning uses heuristics, not real-time process telemetry
-- FFmpeg is an external runtime dependency and must exist on the target machine unless bundled later
+- updater availability depends on release signing keys and GitHub Releases metadata being configured in CI
 
 ## Recommended Next Refactors
 
@@ -196,5 +203,5 @@ The GitHub workflow in [.github/workflows/build-desktop.yml](../.github/workflow
   - mixed activity queue
   - results monitor
 - extract Rust job planning/execution into internal modules
-- add cancellation and retry primitives
+- add retry primitives and persistent job history
 - add persistent presets and saved jobs

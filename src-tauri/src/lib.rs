@@ -12,7 +12,9 @@ use std::{
   thread,
 };
 use sysinfo::System;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_updater::UpdaterExt;
+use url::Url;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,6 +45,7 @@ struct FormatTargets {
 #[serde(rename_all = "camelCase")]
 struct AppBootstrap {
   app_name: &'static str,
+  version: &'static str,
   summary: &'static str,
   presets: Vec<CompressionPreset>,
   media_capabilities: Vec<MediaCapability>,
@@ -210,9 +213,23 @@ struct LiveSystemMetrics {
   total_memory_mb: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppUpdateStatus {
+  configured: bool,
+  current_version: String,
+  available_version: Option<String>,
+  notes: Option<String>,
+  pub_date: Option<String>,
+  update_ready: bool,
+  update_installed: bool,
+  message: String,
+}
+
 #[derive(Default)]
 struct AppState {
   batch_runs: Arc<Mutex<HashMap<String, Arc<BatchRunControl>>>>,
+  system: Arc<Mutex<System>>,
 }
 
 #[derive(Default)]
@@ -273,6 +290,7 @@ struct PresetProfile {
 fn bootstrap_data() -> AppBootstrap {
   AppBootstrap {
     app_name: "xcompressor",
+    version: env!("CARGO_PKG_VERSION"),
     summary: "Batch multimedia compression, format conversion, and GIF generation.",
     presets: vec![
       CompressionPreset {
@@ -377,11 +395,8 @@ fn get_app_bootstrap() -> AppBootstrap {
 }
 
 #[tauri::command]
-fn get_live_system_metrics() -> LiveSystemMetrics {
-  let mut system = System::new_all();
-  system.refresh_cpu_all();
-  system.refresh_memory();
-  std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+fn get_live_system_metrics(state: State<AppState>) -> LiveSystemMetrics {
+  let mut system = state.system.lock().expect("system metrics mutex poisoned");
   system.refresh_cpu_usage();
   system.refresh_memory();
 
@@ -663,6 +678,122 @@ fn default_job_id(input_path: &str, operation: &str) -> String {
   format!("{operation}::{input_path}")
 }
 
+fn bundled_tool_name(tool: &str) -> String {
+  #[cfg(target_os = "windows")]
+  {
+    format!("{tool}.exe")
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  {
+    tool.to_string()
+  }
+}
+
+fn bundled_platform_dir() -> &'static str {
+  #[cfg(target_os = "windows")]
+  {
+    "windows"
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    "macos"
+  }
+
+  #[cfg(target_os = "linux")]
+  {
+    "linux"
+  }
+}
+
+fn bundled_tool_path_candidates(app: &AppHandle, tool: &str) -> Vec<PathBuf> {
+  let bundled_name = bundled_tool_name(tool);
+  let relative_path = Path::new("ffmpeg")
+    .join(bundled_platform_dir())
+    .join(&bundled_name);
+  let mut candidates = Vec::new();
+
+  if let Ok(resource_dir) = app.path().resource_dir() {
+    candidates.push(resource_dir.join(&relative_path));
+  }
+
+  candidates.push(
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("resources")
+      .join(relative_path)
+  );
+
+  candidates
+}
+
+fn resolve_tool_path(app: &AppHandle, tool: &str) -> PathBuf {
+  bundled_tool_path_candidates(app, tool)
+    .into_iter()
+    .find(|path| path.is_file())
+    .unwrap_or_else(|| PathBuf::from(tool))
+}
+
+fn configured_updater(
+  app: &AppHandle
+) -> Result<Option<tauri_plugin_updater::Updater>, String> {
+  let endpoint = option_env!("XCOMPRESSOR_UPDATER_ENDPOINT")
+    .map(str::trim)
+    .filter(|value| !value.is_empty());
+  let pubkey = option_env!("XCOMPRESSOR_UPDATER_PUBKEY")
+    .map(str::trim)
+    .filter(|value| !value.is_empty());
+
+  let (Some(endpoint), Some(pubkey)) = (endpoint, pubkey) else {
+    return Ok(None);
+  };
+
+  app
+    .updater_builder()
+    .endpoints(vec![
+      Url::parse(endpoint).map_err(|error| format!("Invalid updater endpoint {endpoint}: {error}"))?
+    ])
+    .map_err(|error| format!("Failed to configure updater endpoints: {error}"))?
+    .pubkey(pubkey)
+    .build()
+    .map(Some)
+    .map_err(|error| format!("Failed to build updater: {error}"))
+}
+
+fn update_status(
+  current_version: String,
+  available_version: Option<String>,
+  notes: Option<String>,
+  pub_date: Option<String>,
+  update_ready: bool,
+  update_installed: bool,
+  message: impl Into<String>,
+) -> AppUpdateStatus {
+  AppUpdateStatus {
+    configured: true,
+    current_version,
+    available_version,
+    notes,
+    pub_date,
+    update_ready,
+    update_installed,
+    message: message.into(),
+  }
+}
+
+fn updater_not_configured_status(app: &AppHandle) -> AppUpdateStatus {
+  AppUpdateStatus {
+    configured: false,
+    current_version: app.package_info().version.to_string(),
+    available_version: None,
+    notes: None,
+    pub_date: None,
+    update_ready: false,
+    update_installed: false,
+    message: "Updater is not configured for this build.".into(),
+  }
+}
+
 fn cancelled_batch_result(
   job_id: String,
   label: Option<String>,
@@ -924,6 +1055,86 @@ fn emit_batch_progress(app: &AppHandle, event: BatchProgressEvent) {
   let _ = app.emit("batch-progress", event);
 }
 
+#[tauri::command]
+async fn check_for_app_update(app: AppHandle) -> Result<AppUpdateStatus, String> {
+  let Some(updater) = configured_updater(&app)? else {
+    return Ok(updater_not_configured_status(&app));
+  };
+
+  let current_version = app.package_info().version.to_string();
+  let update = updater
+    .check()
+    .await
+    .map_err(|error| format!("Failed to check for updates: {error}"))?;
+
+  Ok(match update {
+    Some(update) => update_status(
+      current_version,
+      Some(update.version.clone()),
+      update.body.clone(),
+      update.date.map(|date| date.to_string()),
+      true,
+      false,
+      format!("Version {} is available.", update.version),
+    ),
+    None => update_status(
+      current_version,
+      None,
+      None,
+      None,
+      false,
+      false,
+      "You already have the latest version.".to_string(),
+    )
+  })
+}
+
+#[tauri::command]
+async fn install_app_update(app: AppHandle) -> Result<AppUpdateStatus, String> {
+  let Some(updater) = configured_updater(&app)? else {
+    return Ok(updater_not_configured_status(&app));
+  };
+
+  let current_version = app.package_info().version.to_string();
+  let Some(update) = updater
+    .check()
+    .await
+    .map_err(|error| format!("Failed to check for updates: {error}"))?
+  else {
+    return Ok(update_status(
+      current_version,
+      None,
+      None,
+      None,
+      false,
+      false,
+      "No update is available right now."
+    ));
+  };
+
+  let available_version = update.version.clone();
+  let notes = update.body.clone();
+  let pub_date = update.date.map(|date| date.to_string());
+
+  update
+    .download_and_install(
+      |_chunk_length, _content_length| {},
+      || {}
+    )
+    .await
+    .map_err(|error| format!("Failed to install update {available_version}: {error}"))?;
+
+  Ok(update_status(
+    current_version,
+    Some(available_version),
+    notes,
+    pub_date,
+    false,
+    true,
+    "Update installed. Restart the app to use the new version."
+  ))
+}
+
 fn emit_cancelled_progress(
   app: &AppHandle,
   job_id: &str,
@@ -951,8 +1162,9 @@ fn emit_cancelled_progress(
   );
 }
 
-fn probe_duration_seconds(input_path: &Path) -> Option<f64> {
-  let output = Command::new("ffprobe")
+fn probe_duration_seconds(app: &AppHandle, input_path: &Path) -> Option<f64> {
+  let ffprobe = resolve_tool_path(app, "ffprobe");
+  let output = Command::new(ffprobe)
     .args([
       "-v",
       "error",
@@ -1012,7 +1224,8 @@ fn run_ffmpeg(
     return Err(RunFfmpegError::Cancelled);
   }
 
-  let mut command = Command::new("ffmpeg");
+  let ffmpeg = resolve_tool_path(app, "ffmpeg");
+  let mut command = Command::new(ffmpeg);
   if overwrite {
     command.arg("-y");
   } else {
@@ -1488,7 +1701,7 @@ fn process_single_job(
   };
 
   let duration_seconds = if mode == "gif" || media_kind == "video" || media_kind == "audio" {
-    probe_duration_seconds(&input)
+    probe_duration_seconds(app, &input)
   } else {
     None
   };
@@ -1595,7 +1808,8 @@ fn execute_batch(
     return Ok(BatchProcessResponse { results: vec![] });
   }
 
-  let version_check = Command::new("ffmpeg")
+  let ffmpeg = resolve_tool_path(&app, "ffmpeg");
+  let version_check = Command::new(ffmpeg)
     .arg("-version")
     .output()
     .map_err(|error| format!("ffmpeg is required but not available: {error}"))?;
@@ -1785,14 +1999,20 @@ async fn run_batch_jobs(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .manage(AppState::default())
+    .manage(AppState {
+      batch_runs: Arc::new(Mutex::new(HashMap::new())),
+      system: Arc::new(Mutex::new(System::new_all()))
+    })
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_updater::Builder::new().build())
     .invoke_handler(tauri::generate_handler![
       get_app_bootstrap,
       get_live_system_metrics,
       plan_compression,
       analyze_resource_plan,
       open_media_in_system_player,
+      check_for_app_update,
+      install_app_update,
       cancel_batch_run,
       run_batch_jobs
     ])

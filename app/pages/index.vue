@@ -20,11 +20,23 @@ type FormatTargets = {
 
 type BootstrapData = {
   appName: string
+  version: string
   summary: string
   presets: BootstrapPreset[]
   mediaCapabilities: BootstrapCapability[]
   formatTargets: FormatTargets[]
   gifWorkflow: string[]
+}
+
+type AppUpdateStatus = {
+  configured: boolean
+  currentVersion: string
+  availableVersion: string | null
+  notes: string | null
+  pubDate: string | null
+  updateReady: boolean
+  updateInstalled: boolean
+  message: string
 }
 
 type BatchJobResult = {
@@ -165,6 +177,9 @@ const processing = ref(false)
 const cancelPending = ref(false)
 const currentRunId = ref('')
 const bootstrap = ref<BootstrapData | null>(null)
+const updateStatus = ref<AppUpdateStatus | null>(null)
+const updateLoading = ref(false)
+const updateInstalling = ref(false)
 const resourcePlan = ref<ResourcePlan | null>(null)
 const resourcePlanLoading = ref(false)
 const liveSystemMetrics = ref<LiveSystemMetrics | null>(null)
@@ -505,6 +520,19 @@ function statusColor(status: string | undefined) {
   return 'primary'
 }
 
+function formatUpdateDate(value: string | null) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleDateString()
+}
+
 async function loadBootstrap() {
   bootstrap.value = await tauriInvoke<BootstrapData>('get_app_bootstrap')
 
@@ -515,6 +543,52 @@ async function loadBootstrap() {
   videoFormat.value = videoTargets[0] || 'mp4'
   imageFormat.value = imageTargets[0] || 'webp'
   audioFormat.value = audioTargets[0] || 'mp3'
+}
+
+async function checkForUpdates() {
+  updateLoading.value = true
+
+  try {
+    updateStatus.value = await tauriInvoke<AppUpdateStatus>('check_for_app_update')
+  } catch (error) {
+    updateStatus.value = {
+      configured: false,
+      currentVersion: bootstrap.value?.version || 'unknown',
+      availableVersion: null,
+      notes: null,
+      pubDate: null,
+      updateReady: false,
+      updateInstalled: false,
+      message: String(error)
+    }
+  } finally {
+    updateLoading.value = false
+  }
+}
+
+async function installUpdate() {
+  if (updateInstalling.value) {
+    return
+  }
+
+  updateInstalling.value = true
+
+  try {
+    updateStatus.value = await tauriInvoke<AppUpdateStatus>('install_app_update')
+  } catch (error) {
+    updateStatus.value = {
+      configured: updateStatus.value?.configured ?? false,
+      currentVersion: updateStatus.value?.currentVersion || bootstrap.value?.version || 'unknown',
+      availableVersion: updateStatus.value?.availableVersion ?? null,
+      notes: updateStatus.value?.notes ?? null,
+      pubDate: updateStatus.value?.pubDate ?? null,
+      updateReady: updateStatus.value?.updateReady ?? false,
+      updateInstalled: false,
+      message: String(error)
+    }
+  } finally {
+    updateInstalling.value = false
+  }
 }
 
 function buildResourcePayload() {
@@ -795,6 +869,7 @@ async function openSelectedGifVideoInSystemPlayer() {
 
 onMounted(async () => {
   await loadBootstrap()
+  await checkForUpdates()
   syncSelectedGifVideo()
   await updateSelectedGifVideoSrc()
   await registerBatchListener()
@@ -855,7 +930,10 @@ function onGifVideoError() {
           <UCard :ui="{ root: 'h-full border border-white/10 bg-stone-950/85 ring-0' }">
             <template #header>
               <div class="space-y-3">
-                <UBadge color="primary" variant="soft" label="Workspace overview" />
+                <div class="flex flex-wrap items-center gap-2">
+                  <UBadge color="primary" variant="soft" label="Workspace overview" />
+                  <UBadge v-if="bootstrap?.version" color="neutral" variant="soft" :label="`v${bootstrap.version}`" />
+                </div>
                 <div>
                   <h1 class="text-3xl font-semibold tracking-tight text-white">
                     xcompressor
@@ -1447,6 +1525,76 @@ function onGifVideoError() {
         </main>
 
         <aside class="grid min-h-0 gap-4">
+          <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
+            <template #header>
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
+                    App updates
+                  </p>
+                  <p class="mt-2 text-sm leading-6 text-stone-300">
+                    {{ updateLoading ? 'Checking GitHub release channel...' : (updateStatus?.message || 'Update status unavailable.') }}
+                  </p>
+                </div>
+                <UBadge
+                  v-if="updateStatus"
+                  :color="updateStatus.updateReady ? 'warning' : (updateStatus.configured ? 'success' : 'neutral')"
+                  variant="soft"
+                  :label="updateStatus.updateReady ? 'update ready' : (updateStatus.configured ? 'current' : 'not configured')"
+                />
+              </div>
+            </template>
+
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
+                  <p class="text-xs text-stone-500">
+                    Installed
+                  </p>
+                  <p class="mt-1 text-lg font-semibold text-white">
+                    {{ updateStatus?.currentVersion || bootstrap?.version || 'n/a' }}
+                  </p>
+                </div>
+                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
+                  <p class="text-xs text-stone-500">
+                    Available
+                  </p>
+                  <p class="mt-1 text-lg font-semibold text-white">
+                    {{ updateStatus?.availableVersion || 'latest' }}
+                  </p>
+                </div>
+              </div>
+
+              <p v-if="updateStatus?.pubDate" class="text-xs leading-6 text-stone-400">
+                Release date: {{ formatUpdateDate(updateStatus.pubDate) }}
+              </p>
+              <p v-if="updateStatus?.notes" class="text-sm leading-6 text-stone-300">
+                {{ updateStatus.notes }}
+              </p>
+
+              <div class="flex flex-wrap gap-3">
+                <UButton
+                  color="neutral"
+                  variant="soft"
+                  icon="i-lucide-refresh-ccw"
+                  :loading="updateLoading"
+                  @click="checkForUpdates"
+                >
+                  Check now
+                </UButton>
+                <UButton
+                  v-if="updateStatus?.updateReady"
+                  color="success"
+                  icon="i-lucide-download"
+                  :loading="updateInstalling"
+                  @click="installUpdate"
+                >
+                  Install update
+                </UButton>
+              </div>
+            </div>
+          </UCard>
+
           <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
             <template #header>
               <div>

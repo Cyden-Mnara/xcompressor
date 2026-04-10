@@ -13,6 +13,7 @@ Tauri + Rust desktop application scaffold for batch multimedia compression.
 
 - [Architecture documentation](docs/architecture.md)
 - [System documentation](docs/system.md)
+- [Release guide](docs/releasing.md)
 
 ## Run
 
@@ -49,6 +50,12 @@ The workflow runs on:
 - manual workflow dispatch
 
 Build outputs are uploaded as GitHub Actions artifacts for each workflow run.
+
+Tagged releases use [.github/workflows/publish-release.yml](.github/workflows/publish-release.yml) to publish signed bundles and Tauri updater metadata to GitHub Releases.
+
+## Bundled FFmpeg
+
+Packaged CI builds stage `ffmpeg` and `ffprobe` into Tauri resources so released apps can run without depending on a system-wide FFmpeg install. Local development still falls back to `ffmpeg` and `ffprobe` on `PATH`.
 
 ## Implemented batch pipeline
 

@@ -1,15 +1,16 @@
-name: Build Desktop Apps
+name: Publish Release
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-  pull_request:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.platform.name }}
+  publish:
+    name: Publish ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
@@ -17,10 +18,15 @@ jobs:
         platform:
           - name: Windows
             runner: windows-latest
-            artifact_name: xcompressor-windows
           - name: macOS
             runner: macos-latest
-            artifact_name: xcompressor-macos
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      XCOMPRESSOR_UPDATER_ENDPOINT: https://github.com/${{ github.repository }}/releases/latest/download/latest.json
+      XCOMPRESSOR_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
 
     steps:
       - name: Checkout repository
@@ -64,23 +70,11 @@ jobs:
           unzip -o ffprobe.zip -d src-tauri/resources/ffmpeg/macos
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2.0" --locked
-
-      - name: Build static frontend
-        run: pnpm generate
-
-      - name: Build desktop app
-        working-directory: src-tauri
-        run: cargo tauri build
-
-      - name: Upload desktop bundles
-        uses: actions/upload-artifact@v4
+      - name: Publish Tauri release
+        uses: tauri-apps/tauri-action@v0
         with:
-          name: ${{ matrix.platform.artifact_name }}
-          path: |
-            src-tauri/target/release/bundle/**/*.app
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.exe
-          if-no-files-found: error
+          tagName: ${{ github.ref_name }}
+          releaseName: xcompressor ${{ github.ref_name }}
+          releaseBody: Desktop release for ${{ github.ref_name }}.
+          releaseDraft: false
+          prerelease: false

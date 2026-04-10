@@ -21,6 +21,7 @@ The current system covers:
 - queue-based batch execution
 - progress streaming from backend to frontend
 - resource estimation before execution
+- in-app update checks against GitHub Releases
 - desktop bundle builds for Windows and macOS in CI
 
 ## Runtime Dependencies
@@ -34,7 +35,7 @@ The current system covers:
 
 ### Desktop runtime dependencies
 
-At runtime, media jobs depend on `ffmpeg` and `ffprobe` being available to the application environment unless future releases bundle them.
+Released desktop bundles can include `ffmpeg` and `ffprobe` inside the application resources. Local development still falls back to binaries available on the system `PATH`.
 
 ## Main User Flows
 
@@ -104,6 +105,14 @@ Returns estimated:
 
 Opens the selected media file in the operating system’s default external player.
 
+### `check_for_app_update`
+
+Checks the configured GitHub Releases updater endpoint for a newer signed application release.
+
+### `install_app_update`
+
+Downloads and installs the latest signed update when one is available.
+
 ### `run_batch_jobs`
 
 Runs the requested batch and returns per-job results after execution.
@@ -137,6 +146,7 @@ sequenceDiagram
 - `completed`
 - `failed`
 - `skipped`
+- `cancelled`
 
 The frontend listens for these events and updates:
 
@@ -251,19 +261,20 @@ pnpm rustcheck
 
 GitHub Actions builds Windows and macOS bundles and uploads them as workflow artifacts.
 
+## Release build
+
+Tagged `v*` pushes publish signed bundles and updater metadata to GitHub Releases.
+
 ## Known Limitations
 
 - inline desktop video preview depends on webview codec support
 - one page still contains much of the frontend logic
 - no persistent database or job history yet
-- no cancellation support yet
-- no built-in codec bundling yet
 - resource planning is estimated, not measured live
+- updater requires release signing secrets and a configured public key in GitHub Actions
 
 ## Recommended Operational Next Steps
 
 - add persistent app settings
-- add job cancellation
 - add retries and failure recovery
-- bundle or manage FFmpeg distribution
 - split frontend and backend into clearer modules
