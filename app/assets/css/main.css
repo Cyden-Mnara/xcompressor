@@ -1,0 +1,29 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Space Grotesk', 'Public Sans', sans-serif;
+
+  --color-amber-50: #fff9ed;
+  --color-amber-100: #ffefcc;
+  --color-amber-200: #ffd98c;
+  --color-amber-300: #ffbf4d;
+  --color-amber-400: #f5a524;
+  --color-amber-500: #d97706;
+  --color-amber-600: #b45309;
+  --color-amber-700: #913f0f;
+  --color-amber-800: #78350f;
+  --color-amber-900: #451a03;
+  --color-amber-950: #1f1203;
+}
+
+html, body, #__nuxt {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgb(245 158 11 / 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgb(59 130 246 / 0.14), transparent 24%),
+    linear-gradient(180deg, #17120d 0%, #09090b 48%, #050507 100%);
+}

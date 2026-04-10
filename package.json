@@ -1,0 +1,33 @@
+{
+  "name": "xcompressor",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "check": "nuxt typecheck",
+    "lint": "eslint .",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "tauri": "cd src-tauri && cargo tauri dev --no-watch",
+    "tauriwatch": "cd src-tauri && cargo tauri dev",
+    "tauribuild": "cd src-tauri && cargo tauri build",
+    "rustcheck": "cd src-tauri && cargo check"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.101",
+    "@iconify-json/simple-icons": "^1.2.77",
+    "@nuxt/ui": "^4.6.1",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "nuxt": "^4.4.2",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.15.2",
+    "eslint": "^10.2.0",
+    "typescript": "^6.0.2",
+    "vue-tsc": "^3.2.6"
+  }
+}
