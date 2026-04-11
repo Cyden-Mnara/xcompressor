@@ -66,8 +66,10 @@ jobs:
           mkdir -p src-tauri/resources/ffmpeg/macos
           curl -L "https://evermeet.cx/ffmpeg/getrelease/zip" -o ffmpeg.zip
           curl -L "https://evermeet.cx/ffprobe/getrelease/zip" -o ffprobe.zip
-          unzip -o ffmpeg.zip -d src-tauri/resources/ffmpeg/macos
-          unzip -o ffprobe.zip -d src-tauri/resources/ffmpeg/macos
+          unzip -o ffmpeg.zip -d ffmpeg-dist
+          unzip -o ffprobe.zip -d ffprobe-dist
+          cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffmpeg
+          cp ffprobe-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
 
       - name: Publish Tauri release
