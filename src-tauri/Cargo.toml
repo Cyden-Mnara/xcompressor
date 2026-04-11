@@ -1,10 +1,11 @@
 [package]
 name = "xcompressor"
 version = "0.1.0"
-description = "Desktop multimedia compressor built with Rust and Tauri"
+description = "Desktop multimedia compressor"
 authors = ["xyden"]
 license = ""
-repository = ""
+repository = "https://github.com/Cyden-Mnara/xcompressor"
+categories = ["compression", "multimedia::video"]
 edition = "2021"
 rust-version = "1.77.2"
 

@@ -12,7 +12,7 @@ useHead({
 })
 
 const title = 'xcompressor'
-const description = 'Rust + Tauri desktop workspace for multimedia compression, conversion, and GIF generation.'
+const description = 'Desktop workspace for multimedia compression, conversion, and GIF generation.'
 
 useSeoMeta({
   title,

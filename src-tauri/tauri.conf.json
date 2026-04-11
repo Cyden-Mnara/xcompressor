@@ -28,6 +28,7 @@
   },
   "bundle": {
     "active": true,
+    "category": "Utility",
     "createUpdaterArtifacts": false,
     "targets": "all",
     "resources": [
