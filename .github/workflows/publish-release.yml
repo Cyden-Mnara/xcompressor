@@ -73,6 +73,7 @@ jobs:
       - name: Publish Tauri release
         uses: tauri-apps/tauri-action@v0
         with:
+          args: --config '{"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ vars.TAURI_UPDATER_PUBLIC_KEY }}"}}}'
           tagName: ${{ github.ref_name }}
           releaseName: xcompressor ${{ github.ref_name }}
           releaseBody: Desktop release for ${{ github.ref_name }}.

@@ -420,8 +420,9 @@ async function updateSelectedGifVideoSrc() {
     return
   }
 
-  const { convertFileSrc } = await import('@tauri-apps/api/core')
-  selectedGifVideoSrc.value = convertFileSrc(selectedGifVideo.value)
+  selectedGifVideoSrc.value = await tauriInvoke<string>('get_media_preview_url', {
+    path: selectedGifVideo.value
+  })
   gifPreviewError.value = ''
 }
 
