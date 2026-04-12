@@ -348,6 +348,7 @@ const cpuUsedPercent = computed(() => {
 
 let unlistenBatchProgress: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
+let liveMetricsStartTimer: ReturnType<typeof setTimeout> | null = null
 let resourcePlanRequestId = 0
 
 function basename(path: string) {
@@ -680,6 +681,12 @@ async function refreshResourcePlan() {
     return
   }
 
+  if (!files.value.length && !gifSegments.value.length && !activityQueue.value.length) {
+    resourcePlan.value = null
+    resourcePlanLoading.value = false
+    return
+  }
+
   const requestId = ++resourcePlanRequestId
   resourcePlanLoading.value = true
 
@@ -716,13 +723,18 @@ function startLiveMetricsPolling() {
 
   liveMetricsInterval = setInterval(() => {
     void refreshLiveSystemMetrics()
-  }, 1500)
+  }, 4000)
 }
 
 function stopLiveMetricsPolling() {
   if (liveMetricsInterval) {
     clearInterval(liveMetricsInterval)
     liveMetricsInterval = null
+  }
+
+  if (liveMetricsStartTimer) {
+    clearTimeout(liveMetricsStartTimer)
+    liveMetricsStartTimer = null
   }
 }
 
@@ -827,6 +839,10 @@ function clearActivityQueue() {
 }
 
 async function registerBatchListener() {
+  if (unlistenBatchProgress) {
+    return
+  }
+
   const { listen } = await import('@tauri-apps/api/event')
   unlistenBatchProgress = await listen<BatchProgressEvent>('batch-progress', ({ payload }) => {
     updateQueueProgress(payload)
@@ -834,6 +850,7 @@ async function registerBatchListener() {
 }
 
 async function runBatch() {
+  await registerBatchListener()
   clearCurrentRunState()
   currentRunId.value = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   activeRunJobIds.value = activityQueue.value.length
@@ -972,10 +989,13 @@ onMounted(() => {
     void refreshResourcePlan()
   })
   syncSelectedGifVideo()
-  void updateSelectedGifVideoSrc()
-  void registerBatchListener()
-  void refreshLiveSystemMetrics()
-  startLiveMetricsPolling()
+  if (selectedGifVideo.value) {
+    void updateSelectedGifVideoSrc()
+  }
+  liveMetricsStartTimer = setTimeout(() => {
+    void refreshLiveSystemMetrics()
+    startLiveMetricsPolling()
+  }, 1500)
 })
 
 onBeforeUnmount(() => {
