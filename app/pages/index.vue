@@ -971,7 +971,6 @@ onMounted(() => {
   void loadBootstrap().then(() => {
     void refreshResourcePlan()
   })
-  void checkForUpdates()
   syncSelectedGifVideo()
   void updateSelectedGifVideoSrc()
   void registerBatchListener()
@@ -1069,6 +1068,16 @@ function onGifVideoError() {
         <p class="text-sm text-stone-400">
           One job runs at a time to keep the machine responsive.
         </p>
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="soft"
+          size="sm"
+          :loading="updateLoading"
+          @click="checkForUpdates"
+        >
+          Check updates
+        </UButton>
         <USelect
           v-model="colorMode.preference"
           :items="themeOptions"
@@ -1079,8 +1088,18 @@ function onGifVideoError() {
       </div>
       <div
         v-else
-        class="mb-4 flex justify-end"
+        class="mb-4 flex justify-end gap-2"
       >
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="soft"
+          size="sm"
+          :loading="updateLoading"
+          @click="checkForUpdates"
+        >
+          Check updates
+        </UButton>
         <USelect
           v-model="colorMode.preference"
           :items="themeOptions"
