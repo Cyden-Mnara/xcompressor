@@ -148,13 +148,22 @@ const modeOptions = [
   { label: 'Convert', value: 'convert' },
   { label: 'Create GIF', value: 'gif' }
 ]
+const themeOptions = [
+  { label: 'System', value: 'system' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'Light', value: 'light' }
+]
 
 const files = ref<string[]>([])
 const outputDir = ref('')
 const mode = ref('compress')
+const selectedMediaType = ref('video')
+const activeWorkspace = ref<'work' | 'development'>('work')
+const canOpenDevelopment = import.meta.dev
+const colorMode = useColorMode()
 const presetId = ref('balanced')
 const resizeLongEdge = ref(1280)
-const maxParallelJobs = ref(2)
+const maxParallelJobs = ref(1)
 const videoFormat = ref('mp4')
 const imageFormat = ref('webp')
 const audioFormat = ref('mp3')
@@ -166,6 +175,7 @@ const gifOptions = reactive({
 })
 const results = ref<BatchJobResult[]>([])
 const queueProgress = ref<Record<string, QueueProgress>>({})
+const activeRunJobIds = ref<string[]>([])
 const gifSegments = ref<GifSegment[]>([])
 const activityQueue = ref<MixedJob[]>([])
 const selectedGifVideo = ref('')
@@ -173,6 +183,7 @@ const selectedGifVideoSrc = ref('')
 const selectedGifVideoDuration = ref(0)
 const gifPreviewError = ref('')
 const gifPreviewVideo = ref<HTMLVideoElement | null>(null)
+const gifPlayCaptureActive = ref(false)
 const processing = ref(false)
 const cancelPending = ref(false)
 const currentRunId = ref('')
@@ -186,6 +197,9 @@ const resourcePlanLoading = ref(false)
 const liveSystemMetrics = ref<LiveSystemMetrics | null>(null)
 const toast = useToast()
 const activePreset = computed(() => bootstrap.value?.presets.find(preset => preset.id === presetId.value))
+const visibleModeOptions = computed(() => selectedMediaType.value === 'video'
+  ? modeOptions
+  : modeOptions.filter(option => option.value !== 'gif'))
 const videoFiles = computed(() => files.value.filter(path => detectKind(path) === 'video'))
 const videoFileOptions = computed(() =>
   videoFiles.value.map(path => ({
@@ -202,7 +216,7 @@ const runQueue = computed<QueueItem[] | MixedJob[]>(() => {
 
   return mode.value === 'gif' ? gifQueue.value : files.value
 })
-const runQueueCount = computed(() => runQueue.value.length)
+const runQueueCount = computed(() => processing.value && activeRunJobIds.value.length ? activeRunJobIds.value.length : runQueue.value.length)
 const effectiveParallelJobs = computed(() => Math.max(maxParallelJobs.value || 1, 1))
 const gifClipRangeLabel = computed(() => {
   const start = gifOptions.startSeconds
@@ -239,22 +253,29 @@ const canRun = computed(() => {
   return files.value.length > 0
 })
 const overallProgress = computed(() => {
-  if (!runQueue.value.length) {
-    return 0
-  }
-  const progressKeys = activityQueue.value.length
-    ? activityQueue.value.map(job => job.jobId)
-    : mode.value === 'gif'
-      ? gifQueue.value.map(segment => segment.jobId)
-      : files.value.map(path => batchJobId(path, mode.value))
+  const progressKeys = activeProgressKeys.value
   if (!progressKeys.length) {
     return 0
   }
+
   const total = progressKeys.reduce((sum, key) => sum + (queueProgress.value[key]?.progressPercent ?? 0), 0)
   return Math.round(total / progressKeys.length)
 })
+const activeProgressKeys = computed(() => {
+  if (processing.value && activeRunJobIds.value.length) {
+    return activeRunJobIds.value
+  }
+
+  if (activityQueue.value.length) {
+    return activityQueue.value.map(job => job.jobId)
+  }
+
+  return mode.value === 'gif'
+    ? gifQueue.value.map(segment => segment.jobId)
+    : files.value.map(path => batchJobId(path, mode.value))
+})
 const completedJobs = computed(() =>
-  Object.values(queueProgress.value).filter(item => isTerminalStatus(item.status)).length
+  activeProgressKeys.value.filter(key => isTerminalStatus(queueProgress.value[key]?.status)).length
 )
 const remainingJobCount = computed(() => {
   const estimateJobs = resourcePlan.value?.jobs ?? []
@@ -308,9 +329,26 @@ const estimatedMinutesLabel = computed(() => {
   return `${Math.ceil(seconds / 60)} min`
 })
 const etaCaption = computed(() => processing.value ? 'Remaining ETA' : 'Planned ETA')
+const ramUsedPercent = computed(() => {
+  const metrics = liveSystemMetrics.value
+  if (!metrics?.totalMemoryMb) {
+    return null
+  }
+
+  return Math.round((metrics.usedMemoryMb / metrics.totalMemoryMb) * 100)
+})
+const cpuUsedPercent = computed(() => {
+  const metrics = liveSystemMetrics.value
+  if (!metrics) {
+    return null
+  }
+
+  return Math.round(metrics.cpuUsagePercent)
+})
 
 let unlistenBatchProgress: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
+let resourcePlanRequestId = 0
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -336,6 +374,22 @@ function detectKind(path: string) {
 
 function targetFormats(kind: string) {
   return bootstrap.value?.formatTargets.find(target => target.kind === kind)?.targets ?? []
+}
+
+function mediaExtensions(kind: string) {
+  if (kind === 'video') {
+    return ['mp4', 'mov', 'mkv', 'avi', 'webm']
+  }
+
+  if (kind === 'image') {
+    return ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff']
+  }
+
+  if (kind === 'audio') {
+    return ['mp3', 'wav', 'aac', 'm4a', 'flac', 'opus', 'ogg']
+  }
+
+  return ['mp4', 'mov', 'mkv', 'avi', 'webm', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff', 'mp3', 'wav', 'aac', 'm4a', 'flac', 'opus', 'ogg']
 }
 
 function batchJobId(path: string, operation: string) {
@@ -374,6 +428,10 @@ function syncPreviewToGifStart() {
   }
 }
 
+function currentGifPreviewTime() {
+  return Number((gifPreviewVideo.value?.currentTime ?? gifOptions.startSeconds).toFixed(2))
+}
+
 function syncSelectedGifVideo() {
   if (selectedGifVideo.value && videoFiles.value.includes(selectedGifVideo.value)) {
     return
@@ -408,8 +466,8 @@ async function pickFiles() {
     directory: false,
     filters: [
       {
-        name: 'Media',
-        extensions: ['mp4', 'mov', 'mkv', 'avi', 'webm', 'png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff', 'mp3', 'wav', 'aac', 'm4a', 'flac', 'opus', 'ogg']
+        name: `${selectedMediaType.value.charAt(0).toUpperCase()}${selectedMediaType.value.slice(1)} media`,
+        extensions: mediaExtensions(selectedMediaType.value)
       }
     ]
   })
@@ -451,11 +509,13 @@ function clearQueue() {
   selectedGifVideo.value = ''
   selectedGifVideoSrc.value = ''
   selectedGifVideoDuration.value = 0
+  gifPlayCaptureActive.value = false
 }
 
 function clearCurrentRunState() {
   results.value = []
   queueProgress.value = {}
+  activeRunJobIds.value = []
   cancelPending.value = false
 }
 
@@ -616,16 +676,28 @@ function buildResourcePayload() {
 }
 
 async function refreshResourcePlan() {
+  if (processing.value) {
+    return
+  }
+
+  const requestId = ++resourcePlanRequestId
   resourcePlanLoading.value = true
 
   try {
-    resourcePlan.value = await tauriInvoke<ResourcePlan>('analyze_resource_plan', {
+    const plan = await tauriInvoke<ResourcePlan>('analyze_resource_plan', {
       request: buildResourcePayload()
     })
+    if (requestId === resourcePlanRequestId) {
+      resourcePlan.value = plan
+    }
   } catch {
-    resourcePlan.value = null
+    if (requestId === resourcePlanRequestId) {
+      resourcePlan.value = null
+    }
   } finally {
-    resourcePlanLoading.value = false
+    if (requestId === resourcePlanRequestId) {
+      resourcePlanLoading.value = false
+    }
   }
 }
 
@@ -764,6 +836,11 @@ async function registerBatchListener() {
 async function runBatch() {
   clearCurrentRunState()
   currentRunId.value = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  activeRunJobIds.value = activityQueue.value.length
+    ? activityQueue.value.map(job => job.jobId)
+    : mode.value === 'gif'
+      ? gifQueue.value.map(segment => segment.jobId)
+      : files.value.map(path => batchJobId(path, mode.value))
   processing.value = true
   cancelPending.value = false
   queueProgress.value = activityQueue.value.length
@@ -852,6 +929,8 @@ async function runBatch() {
     processing.value = false
     cancelPending.value = false
     currentRunId.value = ''
+    activeRunJobIds.value = []
+    void refreshResourcePlan()
   }
 }
 
@@ -873,6 +952,13 @@ function enableSequentialMode() {
   maxParallelJobs.value = 1
 }
 
+function selectMediaType(mediaType: string) {
+  selectedMediaType.value = mediaType
+  if (mediaType !== 'video' && mode.value === 'gif') {
+    mode.value = 'compress'
+  }
+}
+
 async function openSelectedGifVideoInSystemPlayer() {
   if (!selectedGifVideo.value) {
     return
@@ -881,14 +967,15 @@ async function openSelectedGifVideoInSystemPlayer() {
   await tauriInvoke('open_media_in_system_player', { path: selectedGifVideo.value })
 }
 
-onMounted(async () => {
-  await loadBootstrap()
-  await checkForUpdates()
+onMounted(() => {
+  void loadBootstrap().then(() => {
+    void refreshResourcePlan()
+  })
+  void checkForUpdates()
   syncSelectedGifVideo()
-  await updateSelectedGifVideoSrc()
-  await registerBatchListener()
-  await refreshResourcePlan()
-  await refreshLiveSystemMetrics()
+  void updateSelectedGifVideoSrc()
+  void registerBatchListener()
+  void refreshLiveSystemMetrics()
   startLiveMetricsPolling()
 })
 
@@ -926,32 +1013,97 @@ function onGifVideoLoaded(event: Event) {
   selectedGifVideoDuration.value = Number.isFinite(target.duration) ? target.duration : 0
   gifPreviewVideo.value = target
   gifPreviewError.value = ''
+  gifPlayCaptureActive.value = false
   clampGifRange()
 }
 
-function setGifStartFromPreview(event: Event) {
-  const target = event.target as HTMLVideoElement
-  setGifStart(Number(target.currentTime.toFixed(2)))
+function onGifPreviewPlay() {
+  setGifStart(currentGifPreviewTime())
+  gifPlayCaptureActive.value = true
+}
+
+function onGifPreviewPause() {
+  if (!gifPlayCaptureActive.value) {
+    return
+  }
+
+  gifPlayCaptureActive.value = false
+  const endSeconds = currentGifPreviewTime()
+  if (endSeconds > gifOptions.startSeconds + 0.1) {
+    setGifEnd(endSeconds)
+  }
 }
 
 function onGifVideoError() {
   gifPreviewVideo.value = null
+  gifPlayCaptureActive.value = false
   gifPreviewError.value = 'Embedded preview failed in the desktop webview for this file or codec. Open it in the system player instead.'
 }
 </script>
 
 <template>
   <div class="min-h-screen text-stone-100">
-    <div class="mx-auto max-w-[1700px] px-4 py-4 lg:px-6">
-      <div class="grid min-h-[calc(100vh-2rem)] gap-4 xl:grid-cols-[300px_minmax(0,1.35fr)_420px]">
+    <div class="m-auto h-full max-w-425 px-4 py-4 lg:px-6">
+      <div
+        v-if="canOpenDevelopment"
+        class="mb-4 flex flex-wrap items-center justify-between gap-3"
+      >
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            :color="activeWorkspace === 'work' ? 'primary' : 'neutral'"
+            :variant="activeWorkspace === 'work' ? 'solid' : 'soft'"
+            icon="i-lucide-layout-dashboard"
+            @click="activeWorkspace = 'work'"
+          >
+            Work
+          </UButton>
+          <UButton
+            :color="activeWorkspace === 'development' ? 'primary' : 'neutral'"
+            :variant="activeWorkspace === 'development' ? 'solid' : 'soft'"
+            icon="i-lucide-terminal"
+            @click="activeWorkspace = 'development'"
+          >
+            Development
+          </UButton>
+        </div>
+        <p class="text-sm text-stone-400">
+          One job runs at a time to keep the machine responsive.
+        </p>
+        <USelect
+          v-model="colorMode.preference"
+          :items="themeOptions"
+          size="sm"
+          class="w-32"
+          aria-label="Theme"
+        />
+      </div>
+      <div
+        v-else
+        class="mb-4 flex justify-end"
+      >
+        <USelect
+          v-model="colorMode.preference"
+          :items="themeOptions"
+          size="sm"
+          class="w-32"
+          aria-label="Theme"
+        />
+      </div>
+
+      <div
+        v-if="activeWorkspace === 'work'"
+        class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)] xl:grid-cols-[300px_minmax(0,1fr)_440px]"
+      >
         <aside class="grid min-h-0 gap-4">
           <IntroPanel
             :bootstrap="bootstrap"
             :active-preset="activePreset"
+            :active-media-type="selectedMediaType"
+            @select-media-type="selectMediaType"
           />
         </aside>
 
-        <main class="grid min-h-0 gap-4">
+        <main class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)]">
           <JobConfigurator
             v-model:output-dir="outputDir"
             v-model:mode="mode"
@@ -959,11 +1111,11 @@ function onGifVideoError() {
             v-model:video-format="videoFormat"
             v-model:image-format="imageFormat"
             v-model:audio-format="audioFormat"
-            v-model:max-parallel-jobs="maxParallelJobs"
             v-model:resize-long-edge="resizeLongEdge"
             :bootstrap="bootstrap"
             :files-count="files.length"
-            :mode-options="modeOptions"
+            :mode-options="visibleModeOptions"
+            :media-type="selectedMediaType"
             :video-targets="targetFormats('video')"
             :image-targets="targetFormats('image')"
             :audio-targets="targetFormats('audio')"
@@ -995,35 +1147,62 @@ function onGifVideoError() {
             :video-files-count="videoFiles.length"
             :non-video-files-count="nonVideoFiles.length"
             @loaded-metadata="onGifVideoLoaded"
-            @pause-preview="setGifStartFromPreview"
+            @play-preview="onGifPreviewPlay"
+            @pause-preview="onGifPreviewPause"
             @preview-error="onGifVideoError"
             @open-external="openSelectedGifVideoInSystemPlayer"
-            @use-paused-time="setGifStartFromPreview"
             @jump-to-clip-start="syncPreviewToGifStart"
             @set-gif-start="setGifStart"
             @set-gif-end="setGifEnd"
             @add-gif-segment="addGifSegment"
           />
-
-          <div class="grid min-h-0 gap-4 lg:grid-cols-2">
-            <ActivityBatch
-              :activity-queue="activityQueue"
-              :queue-progress="queueProgress"
-              @clear-activity-queue="clearActivityQueue"
-              @remove-activity-job="removeActivityJob"
-            />
-            <SourceQueue
-              :mode="mode"
-              :files="files"
-              :gif-queue="gifQueue"
-              :activity-queue-count="activityQueue.length"
-              :queue-progress="queueProgress"
-              @remove-file="removeFile"
-              @remove-gif-segment="removeGifSegment"
-            />
-          </div>
         </main>
 
+        <aside class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
+          <div class="rounded-lg border border-white/10 bg-stone-950/85 p-3">
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="rounded-lg bg-white/5 p-2">
+                <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  RAM
+                </p>
+                <p class="mt-1 text-lg font-semibold text-white">
+                  {{ ramUsedPercent === null || ramUsedPercent === undefined ? 'n/a' : `${ramUsedPercent}%` }}
+                </p>
+              </div>
+              <div class="rounded-lg bg-white/5 p-2">
+                <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  CPU
+                </p>
+                <p class="mt-1 text-lg font-semibold text-white">
+                  {{ cpuUsedPercent === null || cpuUsedPercent === undefined ? 'n/a' : `${cpuUsedPercent}%` }}
+                </p>
+              </div>
+              <div class="rounded-lg bg-white/5 p-2">
+                <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  ETA
+                </p>
+                <p class="mt-1 text-lg font-semibold text-white">
+                  {{ estimatedMinutesLabel }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <SourceQueue
+            :mode="mode"
+            :files="files"
+            :gif-queue="gifQueue"
+            :activity-queue-count="activityQueue.length"
+            :queue-progress="queueProgress"
+            @remove-file="removeFile"
+            @remove-gif-segment="removeGifSegment"
+          />
+        </aside>
+      </div>
+
+      <div
+        v-else
+        class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)] xl:grid-cols-[380px_minmax(0,1fr)]"
+      >
         <aside class="grid min-h-0 gap-4">
           <AppUpdates
             :update-status="updateStatus"
@@ -1047,17 +1226,29 @@ function onGifVideoError() {
             @cancel-batch="cancelBatch"
             @enable-sequential-mode="enableSequentialMode"
           />
-          <BatchMonitor
-            :overall-progress="overallProgress"
-            :activity-queue-count="activityQueue.length"
-            :gif-queue-count="gifQueue.length"
-            :files-count="files.length"
-            :completed-jobs="completedJobs"
-            :mode="mode"
-            :cancel-pending="cancelPending"
-          />
-          <BatchOutput :results="results" />
         </aside>
+        <main class="min-h-0">
+          <div class="grid min-h-0 gap-4 xl:grid-cols-2">
+            <ActivityBatch
+              :activity-queue="activityQueue"
+              :queue-progress="queueProgress"
+              @clear-activity-queue="clearActivityQueue"
+              @remove-activity-job="removeActivityJob"
+            />
+            <BatchMonitor
+              :overall-progress="overallProgress"
+              :activity-queue-count="activityQueue.length"
+              :gif-queue-count="gifQueue.length"
+              :files-count="files.length"
+              :completed-jobs="completedJobs"
+              :mode="mode"
+              :cancel-pending="cancelPending"
+            />
+          </div>
+          <div class="mt-4">
+            <BatchOutput :results="results" />
+          </div>
+        </main>
       </div>
     </div>
   </div>

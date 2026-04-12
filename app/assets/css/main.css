@@ -27,3 +27,60 @@ body {
     radial-gradient(circle at top right, rgb(59 130 246 / 0.14), transparent 24%),
     linear-gradient(180deg, #17120d 0%, #09090b 48%, #050507 100%);
 }
+
+.light body {
+  background:
+    radial-gradient(circle at top left, rgb(245 158 11 / 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgb(14 165 233 / 0.10), transparent 24%),
+    linear-gradient(180deg, #fafaf9 0%, #f5f5f4 54%, #e7e5e4 100%);
+}
+
+.light .text-stone-100,
+.light .text-white {
+  color: #1c1917;
+}
+
+.light .text-stone-300 {
+  color: #44403c;
+}
+
+.light .text-stone-400,
+.light .text-stone-500 {
+  color: #57534e;
+}
+
+.light .bg-stone-950\/85 {
+  background-color: rgb(255 255 255 / 0.86);
+}
+
+.light .bg-black\/20,
+.light .bg-white\/5 {
+  background-color: rgb(255 255 255 / 0.55);
+}
+
+.light .border-white\/10,
+.light .border-white\/8 {
+  border-color: rgb(120 113 108 / 0.28);
+}
+
+.light .bg-white\/8 {
+  background-color: rgb(120 113 108 / 0.16);
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(120 113 108 / 0.55) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(120 113 108 / 0.55);
+  border-radius: 8px;
+}

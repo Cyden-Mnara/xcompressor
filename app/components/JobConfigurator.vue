@@ -12,6 +12,7 @@ const props = defineProps<{
   bootstrap: BootstrapData | null
   filesCount: number
   modeOptions: { label: string, value: string }[]
+  mediaType: string
   videoTargets: string[]
   imageTargets: string[]
   audioTargets: string[]
@@ -37,11 +38,48 @@ const presetId = defineModel<string>('presetId', { required: true })
 const videoFormat = defineModel<string>('videoFormat', { required: true })
 const imageFormat = defineModel<string>('imageFormat', { required: true })
 const audioFormat = defineModel<string>('audioFormat', { required: true })
-const maxParallelJobs = defineModel<number>('maxParallelJobs', { required: true })
 const resizeLongEdge = defineModel<number | null>('resizeLongEdge', { required: true })
 
 const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({ label: preset.label, value: preset.id })))
 const currentActivityDisabled = computed(() => !outputDir.value || (mode.value === 'gif' ? !props.gifQueueCount : !props.filesCount))
+const mediaTargetLabel = computed(() => `${props.mediaType.charAt(0).toUpperCase()}${props.mediaType.slice(1)} target`)
+const mediaTarget = computed({
+  get() {
+    if (props.mediaType === 'image') {
+      return imageFormat.value
+    }
+
+    if (props.mediaType === 'audio') {
+      return audioFormat.value
+    }
+
+    return videoFormat.value
+  },
+  set(value: string) {
+    if (props.mediaType === 'image') {
+      imageFormat.value = value
+      return
+    }
+
+    if (props.mediaType === 'audio') {
+      audioFormat.value = value
+      return
+    }
+
+    videoFormat.value = value
+  }
+})
+const mediaTargetItems = computed(() => {
+  if (props.mediaType === 'image') {
+    return props.imageTargets
+  }
+
+  if (props.mediaType === 'audio') {
+    return props.audioTargets
+  }
+
+  return props.videoTargets
+})
 const runLabel = computed(() => {
   if (props.processing) {
     return 'Processing batch...'
@@ -56,7 +94,7 @@ const runLabel = computed(() => {
 </script>
 
 <template>
-  <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
+  <UCard :ui="{ root: 'thin-scrollbar overflow-y-auto border border-white/10 bg-stone-950/85 ring-0 lg:max-h-[calc(100dvh-5rem)]' }">
     <template #header>
       <div class="flex items-center justify-between gap-4">
         <div>
@@ -64,7 +102,7 @@ const runLabel = computed(() => {
             Configure
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            Files and operations
+            {{ mediaType }} setup
           </h2>
         </div>
         <UBadge
@@ -76,41 +114,43 @@ const runLabel = computed(() => {
     </template>
 
     <div class="space-y-5">
-      <div class="flex flex-wrap gap-3">
+      <div class="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
         <UButton
           icon="i-lucide-folder-plus"
           color="primary"
           size="lg"
+          class="justify-center"
           @click="emit('pickFiles')"
         >
           Add media
         </UButton>
+        <UInput
+          v-model="outputDir"
+          icon="i-lucide-folder-open"
+          size="lg"
+          placeholder="Choose an output directory"
+        />
         <UButton
           icon="i-lucide-folder-output"
           color="neutral"
           variant="soft"
           size="lg"
+          class="justify-center"
           @click="emit('pickOutputDir')"
         >
-          Output directory
+          Output
         </UButton>
         <UButton
           icon="i-lucide-trash-2"
           color="error"
           variant="ghost"
           size="lg"
+          class="justify-center"
           @click="emit('clearQueue')"
         >
-          Clear all
+          Clear
         </UButton>
       </div>
-
-      <UInput
-        v-model="outputDir"
-        icon="i-lucide-folder-open"
-        size="xl"
-        placeholder="Choose an output directory"
-      />
 
       <div class="grid gap-4 lg:grid-cols-2">
         <UFormField label="Mode">
@@ -131,37 +171,15 @@ const runLabel = computed(() => {
           />
         </UFormField>
 
-        <UFormField label="Video target">
+        <UFormField :label="mediaTargetLabel">
           <USelect
-            v-model="videoFormat"
-            :items="videoTargets"
-          />
-        </UFormField>
-
-        <UFormField label="Image target">
-          <USelect
-            v-model="imageFormat"
-            :items="imageTargets"
-          />
-        </UFormField>
-
-        <UFormField label="Audio target">
-          <USelect
-            v-model="audioFormat"
-            :items="audioTargets"
-          />
-        </UFormField>
-
-        <UFormField label="Parallel jobs">
-          <UInputNumber
-            v-model="maxParallelJobs"
-            :min="1"
-            :max="8"
+            v-model="mediaTarget"
+            :items="mediaTargetItems"
           />
         </UFormField>
 
         <UFormField
-          v-if="mode !== 'gif'"
+          v-if="mode !== 'gif' && mediaType !== 'audio'"
           label="Resize long edge"
         >
           <UInputNumber
@@ -221,7 +239,7 @@ const runLabel = computed(() => {
         v-if="activityQueueCount"
         class="text-sm leading-6 text-sky-300"
       >
-        Saved activities override the current editor when you run the batch.
+        The saved activity queue is what runs.
       </p>
     </div>
   </UCard>

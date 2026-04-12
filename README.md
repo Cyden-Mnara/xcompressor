@@ -8,6 +8,7 @@ Tauri + Rust desktop application scaffold for batch multimedia compression.
 - Nuxt 4 + Nuxt UI frontend at the repository root
 - Rust backend commands for compression planning and FFmpeg batch execution
 - Batch workflow for videos, images, audio, and video-to-GIF jobs
+- Single-worker shortest-job-first scheduling to keep the desktop responsive
 
 ## Documentation
 
@@ -62,11 +63,14 @@ Packaged CI builds stage `ffmpeg` and `ffprobe` into Tauri resources so released
 - pick multiple source files
 - choose one output directory
 - run `compress`, `convert`, or `gif` jobs
-- process several files in parallel through FFmpeg
+- process one FFmpeg job at a time
+- order submitted jobs by shortest estimated runtime first
+- keep jobs added during a run waiting for the next batch
+- cancel tracked FFmpeg processes when a run is cancelled or the app closes
 - return per-file success and error details to the UI
 
 ## Next build slices
 
-1. Stream live FFmpeg progress events into the queue.
-2. Add cancellation, retries, and saved presets.
+1. Add retries and failure recovery for cancelled or failed outputs.
+2. Add persistent settings and saved presets.
 3. Expand image handling beyond FFmpeg for AVIF, JPEG, PNG, and WebP tuning.

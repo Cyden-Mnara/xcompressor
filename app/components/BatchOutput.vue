@@ -22,7 +22,7 @@ function basename(path: string) {
 </script>
 
 <template>
-  <UCard :ui="{ root: 'h-full border border-white/10 bg-stone-950/85 ring-0' }">
+  <UCard :ui="{ root: 'thin-scrollbar h-full overflow-y-auto border border-white/10 bg-stone-950/85 ring-0 lg:max-h-[calc(100dvh-5rem)]' }">
     <template #header>
       <div class="flex items-center justify-between gap-4">
         <div>
@@ -44,7 +44,7 @@ function basename(path: string) {
 
     <div
       v-if="results.length"
-      class="max-h-[calc(100vh-15rem)] space-y-3 overflow-y-auto pr-1"
+      class="thin-scrollbar max-h-[60dvh] space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-17rem)]"
     >
       <div
         v-for="result in results"

@@ -87,7 +87,7 @@ function describeActivity(job: MixedJob) {
 </script>
 
 <template>
-  <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
+  <UCard :ui="{ root: 'thin-scrollbar overflow-y-auto border border-white/10 bg-stone-950/85 ring-0 lg:max-h-[calc(100dvh-5rem)]' }">
     <template #header>
       <div class="flex items-center justify-between gap-4">
         <div>
@@ -119,15 +119,15 @@ function describeActivity(job: MixedJob) {
 
     <div
       v-if="activityQueue.length"
-      class="max-h-[32rem] space-y-3 overflow-y-auto pr-1"
+      class="thin-scrollbar max-h-[60dvh] space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-17rem)]"
     >
       <div
         v-for="job in activityQueue"
         :key="job.jobId"
-        class="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/5 p-4"
+        class="flex flex-col gap-3 rounded-lg border border-white/8 bg-white/5 p-4"
       >
         <div class="flex flex-wrap items-center gap-2">
-          <p class="truncate text-sm font-medium text-white">
+          <p class="min-w-0 flex-1 truncate text-sm font-medium text-white">
             {{ job.label }}
           </p>
           <UBadge

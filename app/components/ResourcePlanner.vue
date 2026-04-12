@@ -37,7 +37,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
+  <UCard :ui="{ root: 'thin-scrollbar overflow-y-auto border border-white/10 bg-stone-950/85 ring-0 lg:max-h-[calc(100dvh-5rem)]' }">
     <template #header>
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">

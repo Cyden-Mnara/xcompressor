@@ -21,10 +21,10 @@ defineProps<{
 
 const emit = defineEmits<{
   loadedMetadata: [event: Event]
-  pausePreview: [event: Event]
+  playPreview: []
+  pausePreview: []
   previewError: []
   openExternal: []
-  usePausedTime: [event: Event]
   jumpToClipStart: []
   setGifStart: [value: number]
   setGifEnd: [value: number]
@@ -43,7 +43,7 @@ function basename(path: string) {
 <template>
   <UCard
     v-if="mode === 'gif'"
-    :ui="{ root: 'border border-amber-500/20 bg-stone-950/85 ring-0' }"
+    :ui="{ root: 'thin-scrollbar overflow-y-auto border border-amber-500/20 bg-stone-950/85 ring-0 lg:max-h-[calc(100dvh-5rem)]' }"
   >
     <template #header>
       <div class="flex items-center justify-between gap-4">
@@ -86,17 +86,18 @@ function basename(path: string) {
             {{ basename(selectedGifVideoModel) }}
           </p>
           <video
-            class="block aspect-video max-w-full rounded-2xl border border-white/10 bg-black object-contain"
+            class="block aspect-video max-w-full rounded-lg border border-white/10 bg-black object-contain"
             :src="selectedGifVideoSrc"
             controls
             preload="metadata"
             @loadedmetadata="emit('loadedMetadata', $event)"
-            @pause="emit('pausePreview', $event)"
+            @play="emit('playPreview')"
+            @pause="emit('pausePreview')"
             @error="emit('previewError')"
           />
           <div
             v-if="gifPreviewError"
-            class="rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4"
+            class="rounded-lg border border-amber-500/20 bg-amber-500/8 p-4"
           >
             <p class="text-sm leading-6 text-amber-200">
               {{ gifPreviewError }}
@@ -111,16 +112,7 @@ function basename(path: string) {
               Open in system player
             </UButton>
           </div>
-          <div class="flex flex-wrap gap-3">
-            <UButton
-              color="neutral"
-              variant="soft"
-              icon="i-lucide-scissors"
-              :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
-              @click="emit('usePausedTime', $event)"
-            >
-              Use paused time as start
-            </UButton>
+          <div class="flex flex-wrap items-center gap-3">
             <UButton
               color="neutral"
               variant="soft"
@@ -143,7 +135,7 @@ function basename(path: string) {
             </p>
           </div>
 
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div class="rounded-lg border border-white/10 bg-white/5 p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
                 Clip range
@@ -196,7 +188,7 @@ function basename(path: string) {
       </div>
 
       <div class="space-y-4">
-        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div class="rounded-lg border border-white/10 bg-black/20 p-4">
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <UFormField
               label="Start second"
@@ -253,7 +245,7 @@ function basename(path: string) {
           </UButton>
         </div>
 
-        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div class="rounded-lg border border-white/10 bg-black/20 p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
             GIF summary
           </p>

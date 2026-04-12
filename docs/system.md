@@ -21,6 +21,8 @@ The current system covers:
 - queue-based batch execution
 - progress streaming from backend to frontend
 - resource estimation before execution
+- single-worker shortest-job-first scheduling
+- active FFmpeg cleanup on cancel and app close
 - in-app update checks against GitHub Releases
 - desktop bundle builds for Windows and macOS in CI
 
@@ -45,7 +47,7 @@ Released desktop bundles can include `ffmpeg` and `ffprobe` inside the applicati
 2. Choose output directory
 3. Select `Compress`
 4. Choose preset and target formats
-5. Review resource planner
+5. Review CPU, RAM, and ETA summary
 6. Run batch or save as activity
 
 ## 2. Convert formats
@@ -54,7 +56,7 @@ Released desktop bundles can include `ffmpeg` and `ffprobe` inside the applicati
 2. Choose output directory
 3. Select `Convert`
 4. Choose target formats
-5. Review resource planner
+5. Review CPU, RAM, and ETA summary
 6. Run batch or save as activity
 
 ## 3. Create GIFs
@@ -62,7 +64,7 @@ Released desktop bundles can include `ffmpeg` and `ffprobe` inside the applicati
 1. Add at least one video file
 2. Select `Create GIF`
 3. Choose a preview source video
-4. Define clip range and GIF parameters
+4. Play to mark the clip start, pause to mark the clip end, then adjust the range if needed
 5. Add one or more clips to the GIF queue
 6. Run GIF batch or save those clips as mixed activities
 
@@ -99,7 +101,7 @@ Returns estimated:
 - available and total memory
 - job memory usage
 - estimated duration
-- safe parallelism
+- shortest-job-first job estimates
 
 ### `open_media_in_system_player`
 
@@ -115,7 +117,7 @@ Downloads and installs the latest signed update when one is available.
 
 ### `run_batch_jobs`
 
-Runs the requested batch and returns per-job results after execution.
+Runs the requested batch with single-worker shortest-job-first scheduling and returns per-job results after execution.
 
 ## Event Flow
 
@@ -171,10 +173,11 @@ The frontend sends:
 
 1. validate request
 2. verify FFmpeg availability
-3. build a worker queue
-4. process jobs in parallel or sequentially
-5. emit progress events
-6. return ordered results
+3. estimate each job
+4. sort runnable jobs shortest-estimated-first
+5. process one job at a time
+6. emit progress events
+7. return ordered results
 
 ### Backend to frontend
 
@@ -238,8 +241,18 @@ flowchart LR
 ### Resource behavior
 
 - the planner estimates pressure before execution
-- if the planned parallel workload is unsafe, the UI disables parallel execution
-- the UI offers sequential mode as fallback
+- execution is intentionally single-worker to preserve system responsiveness
+- job order is shortest-estimated-first to reduce average wait and turnaround time
+- jobs added while a batch is running wait for the next run
+- active-run progress and ETA are based on the submitted run snapshot, not later queue edits
+- production UI shows a compact CPU, RAM, and ETA summary above selected media
+- detailed planner, monitor, updates, and raw output live in the development view
+
+### Shutdown behavior
+
+- active batch runs are marked cancelled when the app window closes
+- tracked FFmpeg process IDs are terminated during cancel and close cleanup
+- the app does not wait for long-running encodes to finish naturally during close
 
 ## Build and Delivery
 
@@ -271,6 +284,7 @@ Tagged `v*` pushes publish signed bundles and updater metadata to GitHub Release
 - one page still contains much of the frontend logic
 - no persistent database or job history yet
 - resource planning is estimated, not measured live
+- shortest-job-first uses heuristic estimates, so true runtime order can differ from perfect shortest runtime
 - updater requires release signing secrets and a configured public key in GitHub Actions
 
 ## Recommended Operational Next Steps
