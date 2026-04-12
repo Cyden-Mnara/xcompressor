@@ -180,9 +180,11 @@ const bootstrap = ref<BootstrapData | null>(null)
 const updateStatus = ref<AppUpdateStatus | null>(null)
 const updateLoading = ref(false)
 const updateInstalling = ref(false)
+const updateToastId = ref<string | number | null>(null)
 const resourcePlan = ref<ResourcePlan | null>(null)
 const resourcePlanLoading = ref(false)
 const liveSystemMetrics = ref<LiveSystemMetrics | null>(null)
+const toast = useToast()
 const activePreset = computed(() => bootstrap.value?.presets.find(preset => preset.id === presetId.value))
 const videoFiles = computed(() => files.value.filter(path => detectKind(path) === 'video'))
 const videoFileOptions = computed(() =>
@@ -256,7 +258,7 @@ const completedJobs = computed(() =>
 )
 const remainingJobCount = computed(() => {
   const estimateJobs = resourcePlan.value?.jobs ?? []
-  return estimateJobs.filter(job => {
+  return estimateJobs.filter((job) => {
     const status = queueProgress.value[job.jobId]?.status
     return !isTerminalStatus(status)
   }).length
@@ -534,6 +536,56 @@ function formatUpdateDate(value: string | null) {
   return date.toLocaleDateString()
 }
 
+function showUpdateToast(status: AppUpdateStatus, failed = false) {
+  const toastPayload = failed
+    ? {
+        title: 'Update check failed',
+        description: status.message,
+        icon: 'i-lucide-circle-alert',
+        color: 'error' as const,
+        duration: 7000
+      }
+    : status.updateInstalled
+      ? {
+          title: 'Update installed',
+          description: status.message,
+          icon: 'i-lucide-check-circle-2',
+          color: 'success' as const,
+          duration: 9000
+        }
+      : status.updateReady
+        ? {
+            title: `Version ${status.availableVersion} is available`,
+            description: status.notes || status.message,
+            icon: 'i-lucide-download',
+            color: 'warning' as const,
+            duration: 12000,
+            actions: [
+              {
+                label: 'Install',
+                color: 'success' as const,
+                onClick: () => {
+                  void installUpdate()
+                }
+              }
+            ]
+          }
+        : {
+            title: status.configured ? 'xcompressor is up to date' : 'Updater not configured',
+            description: status.message,
+            icon: status.configured ? 'i-lucide-badge-check' : 'i-lucide-info',
+            color: status.configured ? 'success' as const : 'neutral' as const,
+            duration: status.configured ? 5000 : 7000
+          }
+
+  if (updateToastId.value) {
+    toast.update(updateToastId.value, toastPayload)
+    return
+  }
+
+  updateToastId.value = toast.add(toastPayload).id
+}
+
 async function loadBootstrap() {
   bootstrap.value = await tauriInvoke<BootstrapData>('get_app_bootstrap')
 
@@ -551,6 +603,7 @@ async function checkForUpdates() {
 
   try {
     updateStatus.value = await tauriInvoke<AppUpdateStatus>('check_for_app_update')
+    showUpdateToast(updateStatus.value)
   } catch (error) {
     updateStatus.value = {
       configured: false,
@@ -562,6 +615,7 @@ async function checkForUpdates() {
       updateInstalled: false,
       message: String(error)
     }
+    showUpdateToast(updateStatus.value, true)
   } finally {
     updateLoading.value = false
   }
@@ -576,6 +630,7 @@ async function installUpdate() {
 
   try {
     updateStatus.value = await tauriInvoke<AppUpdateStatus>('install_app_update')
+    showUpdateToast(updateStatus.value)
   } catch (error) {
     updateStatus.value = {
       configured: updateStatus.value?.configured ?? false,
@@ -587,6 +642,7 @@ async function installUpdate() {
       updateInstalled: false,
       message: String(error)
     }
+    showUpdateToast(updateStatus.value, true)
   } finally {
     updateInstalling.value = false
   }
@@ -656,8 +712,8 @@ function addGifSegment() {
 
   clampGifRange()
 
-  const segmentIndex =
-    gifSegments.value.filter(segment => segment.inputPath === selectedGifVideo.value).length
+  const segmentIndex
+    = gifSegments.value.filter(segment => segment.inputPath === selectedGifVideo.value).length
 
   gifSegments.value = [
     ...gifSegments.value,
@@ -770,28 +826,28 @@ async function runBatch() {
     : mode.value === 'gif'
       ? Object.fromEntries(
           gifQueue.value.map(segment => [segment.jobId, {
-          jobId: segment.jobId,
-          label: segment.label,
-          mediaKind: detectKind(segment.inputPath),
-          operation: mode.value,
-          status: 'queued',
-          progressPercent: 0,
-          outputPath: null,
-          message: 'Queued GIF clip for batch processing.',
-          speed: null
+            jobId: segment.jobId,
+            label: segment.label,
+            mediaKind: detectKind(segment.inputPath),
+            operation: mode.value,
+            status: 'queued',
+            progressPercent: 0,
+            outputPath: null,
+            message: 'Queued GIF clip for batch processing.',
+            speed: null
           } satisfies QueueProgress])
         )
       : Object.fromEntries(
           files.value.map(path => [batchJobId(path, mode.value), {
-          jobId: batchJobId(path, mode.value),
-          label: basename(path),
-          mediaKind: detectKind(path),
-          operation: mode.value,
-          status: 'queued',
-          progressPercent: 0,
-          outputPath: null,
-          message: 'Queued for batch processing.',
-          speed: null
+            jobId: batchJobId(path, mode.value),
+            label: basename(path),
+            mediaKind: detectKind(path),
+            operation: mode.value,
+            status: 'queued',
+            progressPercent: 0,
+            outputPath: null,
+            message: 'Queued for batch processing.',
+            speed: null
           } satisfies QueueProgress])
         )
 
@@ -1019,7 +1075,6 @@ function onGifVideoError() {
               </div>
             </div>
           </UCard>
-
         </aside>
 
         <main class="grid min-h-0 gap-4">

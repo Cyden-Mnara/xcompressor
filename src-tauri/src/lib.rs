@@ -1679,16 +1679,21 @@ fn process_single_job(
   input_path: &str,
   request: &BatchProcessRequest,
   gif_segment: Option<&GifSegmentRequest>,
+  job_id_override: Option<&str>,
+  label_override: Option<&str>,
 ) -> BatchJobResult {
   let input = PathBuf::from(input_path);
   let media_kind = detect_media_kind(&input).to_string();
   let mode = request.mode.to_lowercase();
   let overwrite = request.overwrite.unwrap_or(true);
   let profile = preset_profile(&request.preset_id);
-  let job_id = gif_segment
-    .map(|segment| segment.job_id.clone())
+  let job_id = job_id_override
+    .map(str::to_string)
+    .or_else(|| gif_segment.map(|segment| segment.job_id.clone()))
     .unwrap_or_else(|| default_job_id(input_path, &mode));
-  let label = gif_segment.and_then(|segment| segment.label.clone());
+  let label = label_override
+    .map(str::to_string)
+    .or_else(|| gif_segment.and_then(|segment| segment.label.clone()));
 
   if run_control.is_cancelled() {
     emit_cancelled_progress(
@@ -2055,7 +2060,15 @@ fn process_mixed_job(app: &AppHandle, run_control: &BatchRunControl, job: &Mixed
     None
   };
 
-  let mut result = process_single_job(app, run_control, &job.input_path, &request, gif_segment.as_ref());
+  let mut result = process_single_job(
+    app,
+    run_control,
+    &job.input_path,
+    &request,
+    gif_segment.as_ref(),
+    Some(&job.job_id),
+    job.label.as_deref(),
+  );
   result.job_id = job.job_id.clone();
   if job.label.is_some() {
     result.label = job.label.clone();
@@ -2193,7 +2206,15 @@ fn execute_batch(
           let result = if let Some(mixed_job) = mixed_job.as_ref() {
             process_mixed_job(&app, &run_control, mixed_job)
           } else {
-            process_single_job(&app, &run_control, &path, &request, gif_segment.as_ref())
+            process_single_job(
+              &app,
+              &run_control,
+              &path,
+              &request,
+              gif_segment.as_ref(),
+              None,
+              None,
+            )
           };
           results
             .lock()

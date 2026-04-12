@@ -1,19 +1,22 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  ssr: false,
-
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui'
   ],
-   devServer: {
-    port: 3124,
-  },
+
+  ssr: false,
   devtools: {
     enabled: true
   },
 
   css: ['~/assets/css/main.css'],
+
+  devServer: {
+    port: 3124
+  },
+
+  compatibilityDate: '2025-01-15',
 
   nitro: {
     preset: 'static',
@@ -21,8 +24,6 @@ export default defineNuxtConfig({
       routes: ['/']
     }
   },
-
-  compatibilityDate: '2025-01-15',
 
   eslint: {
     config: {
