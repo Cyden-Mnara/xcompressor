@@ -342,33 +342,6 @@ function batchJobId(path: string, operation: string) {
   return `${operation}::${path}`
 }
 
-function queueItemKey(item: QueueItem) {
-  return typeof item === 'string' ? batchJobId(item, mode.value) : item.jobId
-}
-
-function queueItemProgress(item: QueueItem) {
-  return queueProgress.value[queueItemKey(item)]
-}
-
-function mixedJobProgress(item: MixedJob) {
-  return queueProgress.value[item.jobId]
-}
-
-function describeActivity(job: MixedJob) {
-  if (job.mode === 'gif' && job.gif) {
-    const end = job.gif.startSeconds + job.gif.durationSeconds
-    return `${job.gif.startSeconds.toFixed(1)}s -> ${end.toFixed(1)}s • ${job.gif.fps} fps • ${job.gif.width}px`
-  }
-
-  const target = detectKind(job.inputPath) === 'video'
-    ? job.videoFormat
-    : detectKind(job.inputPath) === 'image'
-      ? job.imageFormat
-      : job.audioFormat
-  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px edge` : ''
-  return `${job.mode} -> ${target}${resize}`
-}
-
 function clampGifRange() {
   if (!selectedGifVideoDuration.value) {
     return
@@ -505,22 +478,6 @@ function updateQueueProgress(event: BatchProgressEvent) {
 
 function isTerminalStatus(status: string | undefined) {
   return ['completed', 'failed', 'skipped', 'cancelled'].includes(status ?? '')
-}
-
-function statusColor(status: string | undefined) {
-  if (status === 'completed') {
-    return 'success'
-  }
-
-  if (status === 'failed') {
-    return 'error'
-  }
-
-  if (status === 'cancelled' || status === 'skipped') {
-    return 'warning'
-  }
-
-  return 'primary'
 }
 
 function formatUpdateDate(value: string | null) {
@@ -952,6 +909,10 @@ watch(videoFiles, async () => {
   await refreshResourcePlan()
 })
 
+watch(selectedGifVideo, async () => {
+  await updateSelectedGifVideoSrc()
+})
+
 watch(selectedGifVideoDuration, () => {
   clampGifRange()
 })
@@ -984,867 +945,118 @@ function onGifVideoError() {
     <div class="mx-auto max-w-[1700px] px-4 py-4 lg:px-6">
       <div class="grid min-h-[calc(100vh-2rem)] gap-4 xl:grid-cols-[300px_minmax(0,1.35fr)_420px]">
         <aside class="grid min-h-0 gap-4">
-          <UCard :ui="{ root: 'h-full border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="space-y-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <UBadge color="primary" variant="soft" label="Workspace overview" />
-                  <UBadge v-if="bootstrap?.version" color="neutral" variant="soft" :label="`v${bootstrap.version}`" />
-                </div>
-                <div>
-                  <h1 class="text-3xl font-semibold tracking-tight text-white">
-                    xcompressor
-                  </h1>
-                  <p class="mt-2 text-sm leading-6 text-stone-300">
-                    Multimedia compression, conversion, and GIF jobs arranged like a desktop workspace instead of a landing page.
-                  </p>
-                </div>
-              </div>
-            </template>
-
-            <div class="space-y-4">
-              <div class="rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
-                  Active preset
-                </p>
-                <p class="mt-2 text-xl font-medium text-white">
-                  {{ activePreset?.label || 'Balanced' }}
-                </p>
-                <p class="mt-2 text-sm leading-6 text-stone-300">
-                  {{ activePreset?.description }}
-                </p>
-                <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p class="text-stone-500">
-                      Quality
-                    </p>
-                    <p class="font-medium text-stone-100">
-                      {{ activePreset?.qualityRange }}
-                    </p>
-                  </div>
-                  <div>
-                    <p class="text-stone-500">
-                      Size delta
-                    </p>
-                    <p class="font-medium text-stone-100">
-                      {{ activePreset?.sizeReductionRange }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div class="space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                  Capabilities
-                </p>
-                <div
-                  v-for="capability in bootstrap?.mediaCapabilities || []"
-                  :key="capability.kind"
-                  class="rounded-2xl border border-white/8 bg-white/5 p-4"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <h2 class="text-sm font-medium capitalize text-white">
-                      {{ capability.kind }}
-                    </h2>
-                    <UBadge color="neutral" variant="soft" :label="capability.conversions.length + ' targets'" />
-                  </div>
-                  <p class="mt-2 text-xs leading-6 text-stone-400">
-                    {{ capability.compressionModes.join(' • ') }}
-                  </p>
-                </div>
-              </div>
-
-              <div class="space-y-3">
-                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                  GIF workflow
-                </p>
-                <ol class="space-y-2">
-                  <li
-                    v-for="(step, index) in bootstrap?.gifWorkflow || []"
-                    :key="step"
-                    class="flex gap-3 rounded-2xl border border-white/8 bg-white/5 p-3"
-                  >
-                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-xs font-semibold text-amber-300">
-                      {{ index + 1 }}
-                    </div>
-                    <p class="text-xs leading-6 text-stone-300">
-                      {{ step }}
-                    </p>
-                  </li>
-                </ol>
-              </div>
-            </div>
-          </UCard>
+          <IntroPanel
+            :bootstrap="bootstrap"
+            :active-preset="activePreset"
+          />
         </aside>
 
         <main class="grid min-h-0 gap-4">
-          <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                    Configure
-                  </p>
-                  <h2 class="mt-2 text-2xl font-semibold text-white">
-                    Files and operations
-                  </h2>
-                </div>
-                <UBadge color="primary" variant="soft" :label="files.length + ' source files'" />
-              </div>
-            </template>
+          <JobConfigurator
+            v-model:output-dir="outputDir"
+            v-model:mode="mode"
+            v-model:preset-id="presetId"
+            v-model:video-format="videoFormat"
+            v-model:image-format="imageFormat"
+            v-model:audio-format="audioFormat"
+            v-model:max-parallel-jobs="maxParallelJobs"
+            v-model:resize-long-edge="resizeLongEdge"
+            :bootstrap="bootstrap"
+            :files-count="files.length"
+            :mode-options="modeOptions"
+            :video-targets="targetFormats('video')"
+            :image-targets="targetFormats('image')"
+            :audio-targets="targetFormats('audio')"
+            :gif-queue-count="gifQueue.length"
+            :activity-queue-count="activityQueue.length"
+            :processing="processing"
+            :cancel-pending="cancelPending"
+            :can-run="canRun"
+            @pick-files="pickFiles"
+            @pick-output-dir="pickOutputDir"
+            @clear-queue="clearQueue"
+            @add-current-activity="addCurrentActivity"
+            @run-batch="runBatch"
+            @cancel-batch="cancelBatch"
+          />
 
-            <div class="space-y-5">
-              <div class="flex flex-wrap gap-3">
-                <UButton icon="i-lucide-folder-plus" color="primary" size="lg" @click="pickFiles">
-                  Add media
-                </UButton>
-                <UButton icon="i-lucide-folder-output" color="neutral" variant="soft" size="lg" @click="pickOutputDir">
-                  Output directory
-                </UButton>
-                <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="lg" @click="clearQueue">
-                  Clear all
-                </UButton>
-              </div>
-
-              <UInput
-                v-model="outputDir"
-                icon="i-lucide-folder-open"
-                size="xl"
-                placeholder="Choose an output directory"
-              />
-
-              <div class="grid gap-4 lg:grid-cols-2">
-                <UFormField label="Mode">
-                  <USelect v-model="mode" :items="modeOptions" option-attribute="label" value-attribute="value" />
-                </UFormField>
-
-                <UFormField label="Preset">
-                  <USelect
-                    v-model="presetId"
-                    :items="(bootstrap?.presets || []).map(preset => ({ label: preset.label, value: preset.id }))"
-                    option-attribute="label"
-                    value-attribute="value"
-                  />
-                </UFormField>
-
-                <UFormField label="Video target">
-                  <USelect v-model="videoFormat" :items="targetFormats('video')" />
-                </UFormField>
-
-                <UFormField label="Image target">
-                  <USelect v-model="imageFormat" :items="targetFormats('image')" />
-                </UFormField>
-
-                <UFormField label="Audio target">
-                  <USelect v-model="audioFormat" :items="targetFormats('audio')" />
-                </UFormField>
-
-                <UFormField label="Parallel jobs">
-                  <UInputNumber v-model="maxParallelJobs" :min="1" :max="8" />
-                </UFormField>
-
-                <UFormField v-if="mode !== 'gif'" label="Resize long edge">
-                  <UInputNumber v-model="resizeLongEdge" :min="320" :max="4096" :step="10" />
-                </UFormField>
-              </div>
-
-              <div class="grid gap-3 md:grid-cols-2">
-                <UButton
-                  block
-                  size="xl"
-                  color="neutral"
-                  variant="soft"
-                  icon="i-lucide-plus"
-                  :disabled="!outputDir || (mode === 'gif' ? !gifQueue.length : !files.length)"
-                  @click="addCurrentActivity"
-                >
-                  Add current activity
-                </UButton>
-                <UButton
-                  block
-                  size="xl"
-                  color="primary"
-                  icon="i-lucide-play"
-                  :loading="processing"
-                  :disabled="!canRun"
-                  @click="runBatch"
-                >
-                  {{ processing ? 'Processing batch...' : (activityQueue.length ? 'Run mixed activity batch' : (mode === 'gif' ? 'Generate GIF batch' : 'Run batch')) }}
-                </UButton>
-              </div>
-
-              <UButton
-                v-if="processing"
-                block
-                size="lg"
-                color="warning"
-                variant="soft"
-                icon="i-lucide-square"
-                :loading="cancelPending"
-                @click="cancelBatch"
-              >
-                {{ cancelPending ? 'Stopping batch...' : 'Cancel running batch' }}
-              </UButton>
-
-              <p v-if="mode === 'gif' && !gifQueue.length" class="text-sm leading-6 text-amber-300">
-                Add at least one GIF clip before running export.
-              </p>
-              <p v-if="activityQueue.length" class="text-sm leading-6 text-sky-300">
-                Saved activities override the current editor when you run the batch.
-              </p>
-            </div>
-          </UCard>
-
-          <UCard v-if="mode === 'gif'" :ui="{ root: 'border border-amber-500/20 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
-                    GIF editor
-                  </p>
-                  <h2 class="mt-2 text-2xl font-semibold text-white">
-                    Preview and clip ranges
-                  </h2>
-                </div>
-                <UBadge color="warning" variant="soft" :label="gifQueue.length + ' clips queued'" />
-              </div>
-            </template>
-
-            <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <div class="min-w-0 space-y-4 overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4">
-                <UFormField label="Preview source" description="Choose the video you want to clip from.">
-                  <USelect
-                    v-model="selectedGifVideo"
-                    :items="videoFileOptions"
-                    option-attribute="label"
-                    value-attribute="value"
-                    :ui="{ base: 'min-w-0 w-full', content: 'max-w-full' }"
-                  />
-                </UFormField>
-
-                <div v-if="selectedGifVideoSrc" class="min-w-0 space-y-3">
-                  <p class="truncate text-xs text-stone-500">
-                    {{ basename(selectedGifVideo) }}
-                  </p>
-                  <video
-                    ref="gifPreviewVideo"
-                    class="block aspect-video max-w-full rounded-2xl border border-white/10 bg-black object-contain"
-                    :src="selectedGifVideoSrc"
-                    controls
-                    preload="metadata"
-                    @loadedmetadata="onGifVideoLoaded"
-                    @pause="setGifStartFromPreview"
-                    @error="onGifVideoError"
-                  />
-                  <div v-if="gifPreviewError" class="rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4">
-                    <p class="text-sm leading-6 text-amber-200">
-                      {{ gifPreviewError }}
-                    </p>
-                    <UButton
-                      class="mt-3"
-                      color="warning"
-                      variant="soft"
-                      icon="i-lucide-external-link"
-                      @click="openSelectedGifVideoInSystemPlayer"
-                    >
-                      Open in system player
-                    </UButton>
-                  </div>
-                  <div class="flex flex-wrap gap-3">
-                    <UButton
-                      color="neutral"
-                      variant="soft"
-                      icon="i-lucide-scissors"
-                      :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
-                      @click="setGifStartFromPreview($event)"
-                    >
-                      Use paused time as start
-                    </UButton>
-                    <UButton
-                      color="neutral"
-                      variant="soft"
-                      icon="i-lucide-skip-back"
-                      :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
-                      @click="syncPreviewToGifStart"
-                    >
-                      Jump to clip start
-                    </UButton>
-                    <UButton color="neutral" variant="soft" icon="i-lucide-monitor-play" @click="openSelectedGifVideoInSystemPlayer">
-                      Open externally
-                    </UButton>
-                    <p class="text-xs leading-6 text-stone-400">
-                      Video length: {{ selectedGifVideoDuration ? `${selectedGifVideoDuration.toFixed(1)}s` : 'loading...' }}
-                    </p>
-                  </div>
-
-                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                        Clip range
-                      </p>
-                      <p class="text-sm font-medium text-white">
-                        {{ gifClipRangeLabel }}
-                      </p>
-                    </div>
-                    <div class="space-y-4">
-                      <div>
-                        <div class="mb-2 flex items-center justify-between text-xs text-stone-400">
-                          <span>Start</span>
-                          <span>{{ gifOptions.startSeconds.toFixed(1) }}s</span>
-                        </div>
-                        <input
-                          :value="gifOptions.startSeconds"
-                          class="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-700 accent-amber-400"
-                          type="range"
-                          min="0"
-                          :max="Math.max(selectedGifVideoDuration - 0.5, 0)"
-                          step="0.1"
-                          @input="setGifStart(Number(($event.target as HTMLInputElement).value))"
-                        >
-                      </div>
-                      <div>
-                        <div class="mb-2 flex items-center justify-between text-xs text-stone-400">
-                          <span>End</span>
-                          <span>{{ gifEndSeconds.toFixed(1) }}s</span>
-                        </div>
-                        <input
-                          :value="gifEndSeconds"
-                          class="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-700 accent-sky-400"
-                          type="range"
-                          :min="Math.min(gifOptions.startSeconds + 0.5, selectedGifVideoDuration || gifOptions.startSeconds + 0.5)"
-                          :max="selectedGifVideoDuration || gifOptions.startSeconds + gifOptions.durationSeconds"
-                          step="0.1"
-                          @input="setGifEnd(Number(($event.target as HTMLInputElement).value))"
-                        >
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <UEmptyState
-                  v-else
-                  icon="i-lucide-film"
-                  title="No video selected for preview"
-                  description="Add at least one video file to start building GIF clips."
-                />
-              </div>
-
-              <div class="space-y-4">
-                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-                    <UFormField label="Start second" description="Where the clip begins inside the source video.">
-                      <UInputNumber v-model="gifOptions.startSeconds" :min="0" :step="0.5" />
-                    </UFormField>
-                    <UFormField label="End second" description="Where the clip stops inside the source video.">
-                      <UInputNumber v-model="gifEndSeconds" :min="0.5" :step="0.5" />
-                    </UFormField>
-                    <UFormField label="GIF FPS" description="Higher FPS is smoother but creates a larger file.">
-                      <UInputNumber v-model="gifOptions.fps" :min="1" :max="30" />
-                    </UFormField>
-                    <UFormField label="GIF width" description="Output width in pixels. Smaller width exports faster.">
-                      <UInputNumber v-model="gifOptions.width" :min="160" :max="1280" :step="20" />
-                    </UFormField>
-                  </div>
-
-                  <UButton
-                    block
-                    class="mt-4"
-                    color="primary"
-                    icon="i-lucide-plus"
-                    :disabled="!selectedGifVideo"
-                    @click="addGifSegment"
-                  >
-                    Add clip to GIF queue
-                  </UButton>
-                </div>
-
-                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                    GIF summary
-                  </p>
-                  <div class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                    <div>
-                      <p class="text-xs text-stone-500">
-                        Clip range
-                      </p>
-                      <p class="text-sm font-medium text-white">
-                        {{ gifClipRangeLabel }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="text-xs text-stone-500">
-                        Motion
-                      </p>
-                      <p class="text-sm font-medium text-white">
-                        {{ gifOptions.fps }} fps
-                      </p>
-                    </div>
-                    <div>
-                      <p class="text-xs text-stone-500">
-                        Output
-                      </p>
-                      <p class="text-sm font-medium text-white">
-                        {{ gifOptions.width }}px wide `.gif`
-                      </p>
-                    </div>
-                  </div>
-                  <p class="mt-3 text-sm leading-6 text-stone-300">
-                    Eligible video files: {{ videoFiles.length }}. Queued GIF clips: {{ gifQueue.length }}<span v-if="nonVideoFiles.length">. Non-video files stay in the media queue but cannot create GIF clips.</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </UCard>
+          <GifEditor
+            v-model:gif-options="gifOptions"
+            v-model:gif-end-seconds="gifEndSeconds"
+            v-model:selected-gif-video="selectedGifVideo"
+            :mode="mode"
+            :gif-queue-count="gifQueue.length"
+            :selected-gif-video-src="selectedGifVideoSrc"
+            :selected-gif-video-duration="selectedGifVideoDuration"
+            :video-file-options="videoFileOptions"
+            :gif-preview-error="gifPreviewError"
+            :gif-preview-video="gifPreviewVideo"
+            :gif-clip-range-label="gifClipRangeLabel"
+            :video-files-count="videoFiles.length"
+            :non-video-files-count="nonVideoFiles.length"
+            @loaded-metadata="onGifVideoLoaded"
+            @pause-preview="setGifStartFromPreview"
+            @preview-error="onGifVideoError"
+            @open-external="openSelectedGifVideoInSystemPlayer"
+            @use-paused-time="setGifStartFromPreview"
+            @jump-to-clip-start="syncPreviewToGifStart"
+            @set-gif-start="setGifStart"
+            @set-gif-end="setGifEnd"
+            @add-gif-segment="addGifSegment"
+          />
 
           <div class="grid min-h-0 gap-4 lg:grid-cols-2">
-            <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-              <template #header>
-                <div class="flex items-center justify-between gap-4">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                      Activity batch
-                    </p>
-                    <h2 class="mt-2 text-xl font-semibold text-white">
-                      Saved operations
-                    </h2>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <UBadge color="primary" variant="soft" :label="activityQueue.length + ' queued'" />
-                    <UButton
-                      icon="i-lucide-trash-2"
-                      color="error"
-                      variant="ghost"
-                      :disabled="!activityQueue.length"
-                      @click="clearActivityQueue"
-                    >
-                      Clear
-                    </UButton>
-                  </div>
-                </div>
-              </template>
-
-              <div v-if="activityQueue.length" class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
-                <div
-                  v-for="job in activityQueue"
-                  :key="job.jobId"
-                  class="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/5 p-4"
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="truncate text-sm font-medium text-white">
-                      {{ job.label }}
-                    </p>
-                    <UBadge color="neutral" variant="soft" :label="job.mode" />
-                    <UBadge color="neutral" variant="soft" :label="detectKind(job.inputPath)" />
-                    <UBadge
-                      v-if="mixedJobProgress(job)"
-                      :color="statusColor(mixedJobProgress(job)?.status)"
-                      variant="soft"
-                      :label="mixedJobProgress(job)?.status || 'queued'"
-                    />
-                  </div>
-                  <p class="truncate text-xs text-stone-500">
-                    {{ job.inputPath }}
-                  </p>
-                  <p class="text-xs text-stone-400">
-                    {{ describeActivity(job) }}
-                  </p>
-                  <div v-if="mixedJobProgress(job)" class="space-y-2">
-                    <div class="h-2 overflow-hidden rounded-full bg-white/8">
-                      <div
-                        class="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-sky-400 transition-[width] duration-300"
-                        :style="{ width: `${mixedJobProgress(job)?.progressPercent ?? 0}%` }"
-                      />
-                    </div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-400">
-                      <p>{{ mixedJobProgress(job)?.message }}</p>
-                      <p>{{ mixedJobProgress(job)?.progressPercent ?? 0 }}%</p>
-                    </div>
-                  </div>
-                  <div class="flex justify-end">
-                    <UButton
-                      icon="i-lucide-x"
-                      color="neutral"
-                      variant="ghost"
-                      @click="removeActivityJob(job.jobId)"
-                    >
-                      Remove
-                    </UButton>
-                  </div>
-                </div>
-              </div>
-
-              <UEmptyState
-                v-else
-                icon="i-lucide-layers-3"
-                title="No mixed activity batch yet"
-                description="Build a compress, convert, or GIF configuration above, then add it here as a saved activity."
-              />
-            </UCard>
-
-            <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-              <template #header>
-                <div class="flex items-center justify-between gap-4">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                      Source queue
-                    </p>
-                    <h2 class="mt-2 text-xl font-semibold text-white">
-                      Selected media
-                    </h2>
-                  </div>
-                  <p class="max-w-xs text-right text-sm text-stone-400">
-                    <span v-if="activityQueue.length">
-                      These files feed the editor. The saved activity list is what runs.
-                    </span>
-                    <span v-else-if="mode === 'gif'">
-                      GIF export is driven by the queued clips below.
-                    </span>
-                    <span v-else>
-                      Mixed video, image, and audio files are supported in one run.
-                    </span>
-                  </p>
-                </div>
-              </template>
-
-              <div v-if="mode === 'gif' ? gifQueue.length : files.length" class="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
-                <div
-                  v-for="item in (mode === 'gif' ? gifQueue : files)"
-                  :key="typeof item === 'string' ? item : item.jobId"
-                  class="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/5 p-4"
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="truncate text-sm font-medium text-white">
-                      {{ typeof item === 'string' ? basename(item) : item.label }}
-                    </p>
-                    <UBadge color="neutral" variant="soft" :label="detectKind(typeof item === 'string' ? item : item.inputPath)" />
-                    <UBadge
-                      v-if="mode === 'gif' && typeof item === 'string' && detectKind(item) !== 'video'"
-                      color="warning"
-                      variant="soft"
-                      label="skipped in gif mode"
-                    />
-                    <UBadge
-                      v-if="queueItemProgress(item)"
-                      :color="statusColor(queueItemProgress(item)?.status)"
-                      variant="soft"
-                      :label="queueItemProgress(item)?.status || 'queued'"
-                    />
-                  </div>
-                  <p class="truncate text-xs text-stone-500">
-                    {{ typeof item === 'string' ? item : item.inputPath }}
-                  </p>
-                  <p v-if="mode === 'gif' && typeof item !== 'string'" class="text-xs text-stone-400">
-                    {{ item.startSeconds.toFixed(1) }}s -> {{ (item.startSeconds + item.durationSeconds).toFixed(1) }}s • {{ item.fps }} fps • {{ item.width }}px
-                  </p>
-                  <div v-if="queueItemProgress(item)" class="space-y-2">
-                    <div class="h-2 overflow-hidden rounded-full bg-white/8">
-                      <div
-                        class="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-sky-400 transition-[width] duration-300"
-                        :style="{ width: `${queueItemProgress(item)?.progressPercent ?? 0}%` }"
-                      />
-                    </div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-400">
-                      <p>{{ queueItemProgress(item)?.message }}</p>
-                      <p>{{ queueItemProgress(item)?.progressPercent ?? 0 }}%</p>
-                    </div>
-                    <p v-if="queueItemProgress(item)?.speed" class="text-xs text-stone-500">
-                      Speed: {{ queueItemProgress(item)?.speed }}
-                    </p>
-                  </div>
-                  <p
-                    v-else-if="mode === 'gif' && typeof item === 'string' && detectKind(item) !== 'video'"
-                    class="text-xs text-amber-300"
-                  >
-                    This file stays in the queue, but GIF export only runs on video inputs.
-                  </p>
-                  <div class="flex justify-end">
-                    <UButton
-                      icon="i-lucide-x"
-                      color="neutral"
-                      variant="ghost"
-                      @click="typeof item === 'string' ? removeFile(item) : removeGifSegment(item.jobId)"
-                    >
-                      {{ mode === 'gif' && typeof item !== 'string' ? 'Remove clip' : 'Remove' }}
-                    </UButton>
-                  </div>
-                </div>
-              </div>
-
-              <UEmptyState
-                v-else
-                icon="i-lucide-clapperboard"
-                :title="mode === 'gif' ? 'No GIF clips queued' : 'No media queued'"
-                :description="mode === 'gif' ? 'Preview a video and add one or more clip ranges to the GIF queue.' : 'Use Add media to select videos, images, and audio files from disk.'"
-              />
-            </UCard>
+            <ActivityBatch
+              :activity-queue="activityQueue"
+              :queue-progress="queueProgress"
+              @clear-activity-queue="clearActivityQueue"
+              @remove-activity-job="removeActivityJob"
+            />
+            <SourceQueue
+              :mode="mode"
+              :files="files"
+              :gif-queue="gifQueue"
+              :activity-queue-count="activityQueue.length"
+              :queue-progress="queueProgress"
+              @remove-file="removeFile"
+              @remove-gif-segment="removeGifSegment"
+            />
           </div>
         </main>
 
         <aside class="grid min-h-0 gap-4">
-          <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
-                    App updates
-                  </p>
-                  <p class="mt-2 text-sm leading-6 text-stone-300">
-                    {{ updateLoading ? 'Checking GitHub release channel...' : (updateStatus?.message || 'Update status unavailable.') }}
-                  </p>
-                </div>
-                <UBadge
-                  v-if="updateStatus"
-                  :color="updateStatus.updateReady ? 'warning' : (updateStatus.configured ? 'success' : 'neutral')"
-                  variant="soft"
-                  :label="updateStatus.updateReady ? 'update ready' : (updateStatus.configured ? 'current' : 'not configured')"
-                />
-              </div>
-            </template>
-
-            <div class="space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    Installed
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ updateStatus?.currentVersion || bootstrap?.version || 'n/a' }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    Available
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ updateStatus?.availableVersion || 'latest' }}
-                  </p>
-                </div>
-              </div>
-
-              <p v-if="updateStatus?.pubDate" class="text-xs leading-6 text-stone-400">
-                Release date: {{ formatUpdateDate(updateStatus.pubDate) }}
-              </p>
-              <p v-if="updateStatus?.notes" class="text-sm leading-6 text-stone-300">
-                {{ updateStatus.notes }}
-              </p>
-
-              <div class="flex flex-wrap gap-3">
-                <UButton
-                  color="neutral"
-                  variant="soft"
-                  icon="i-lucide-refresh-ccw"
-                  :loading="updateLoading"
-                  @click="checkForUpdates"
-                >
-                  Check now
-                </UButton>
-                <UButton
-                  v-if="updateStatus?.updateReady"
-                  color="success"
-                  icon="i-lucide-download"
-                  :loading="updateInstalling"
-                  @click="installUpdate"
-                >
-                  Install update
-                </UButton>
-              </div>
-            </div>
-          </UCard>
-
-          <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">
-                  Resource planner
-                </p>
-                <p class="mt-2 text-sm leading-6 text-stone-300">
-                  {{ resourcePlanLoading ? 'Checking available resources...' : (resourcePlan?.summary || 'No jobs selected yet.') }}
-                </p>
-              </div>
-            </template>
-
-            <div class="space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    Live CPU
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ liveSystemMetrics ? `${Math.round(liveSystemMetrics.cpuUsagePercent)}%` : 'n/a' }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    Live RAM
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ liveSystemMetrics ? `${liveSystemMetrics.usedMemoryMb} MB` : 'n/a' }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    Planned RAM
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ resourcePlan?.estimatedParallelMemoryMb ? `${resourcePlan.estimatedParallelMemoryMb} MB` : 'n/a' }}
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
-                  <p class="text-xs text-stone-500">
-                    {{ etaCaption }}
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-white">
-                    {{ estimatedMinutesLabel }}
-                  </p>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-3">
-                <UButton
-                  v-if="processing"
-                  color="warning"
-                  variant="soft"
-                  icon="i-lucide-square"
-                  :loading="cancelPending"
-                  @click="cancelBatch"
-                >
-                  {{ cancelPending ? 'Stopping...' : 'Cancel batch' }}
-                </UButton>
-                <UBadge
-                  :color="resourcePlan?.canRunInParallel === false ? 'warning' : 'success'"
-                  variant="soft"
-                  :label="resourcePlan?.canRunInParallel === false ? 'parallel limited' : 'parallel OK'"
-                />
-                <p class="text-xs leading-6 text-stone-400">
-                  Jobs {{ resourcePlan?.jobs.length ?? runQueueCount }} • requested {{ effectiveParallelJobs }} • safe {{ resourcePlan?.safeParallelJobs ?? 1 }}
-                </p>
-                <p class="text-xs leading-6 text-stone-400">
-                  Available RAM {{ liveSystemMetrics ? `${liveSystemMetrics.availableMemoryMb} MB` : 'n/a' }}
-                </p>
-              </div>
-
-              <UButton
-                v-if="resourcePlan?.shouldUseSequential && effectiveParallelJobs > 1"
-                block
-                color="warning"
-                variant="soft"
-                icon="i-lucide-git-commit-horizontal"
-                @click="enableSequentialMode"
-              >
-                Switch to sequential mode
-              </UButton>
-
-              <p v-if="resourcePlan?.shouldUseSequential && effectiveParallelJobs > 1" class="text-sm leading-6 text-amber-300">
-                Parallel execution is blocked for the current estimate.
-              </p>
-            </div>
-          </UCard>
-
-          <UCard :ui="{ root: 'border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                    Run status
-                  </p>
-                  <h2 class="mt-2 text-2xl font-semibold text-white">
-                    Batch monitor
-                  </h2>
-                </div>
-                <p class="text-2xl font-semibold text-white">
-                  {{ overallProgress }}%
-                </p>
-              </div>
-            </template>
-
-            <div class="space-y-4">
-              <p class="text-sm leading-6 text-stone-300">
-                <span v-if="activityQueue.length">
-                  {{ completedJobs }}/{{ activityQueue.length || 0 }} mixed activity jobs finished.
-                </span>
-                <span v-else-if="mode === 'gif'">
-                  {{ completedJobs }}/{{ gifQueue.length || 0 }} queued GIF clips finished.
-                </span>
-                <span v-else>
-                  {{ completedJobs }}/{{ files.length || 0 }} jobs finished.
-                </span>
-                <span v-if="cancelPending" class="text-amber-300">
-                  Cancellation requested. Active FFmpeg jobs are being stopped.
-                </span>
-              </p>
-
-              <div class="h-3 overflow-hidden rounded-full bg-white/8">
-                <div
-                  class="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-sky-400 transition-[width] duration-300"
-                  :style="{ width: `${overallProgress}%` }"
-                />
-              </div>
-            </div>
-          </UCard>
-
-          <UCard :ui="{ root: 'h-full border border-white/10 bg-stone-950/85 ring-0' }">
-            <template #header>
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-                    Batch output
-                  </p>
-                  <h2 class="mt-2 text-2xl font-semibold text-white">
-                    Results
-                  </h2>
-                </div>
-                <UBadge
-                  v-if="results.length"
-                  color="primary"
-                  variant="soft"
-                  :label="results.filter(result => result.success).length + ' successful'"
-                />
-              </div>
-            </template>
-
-            <div v-if="results.length" class="max-h-[calc(100vh-15rem)] space-y-3 overflow-y-auto pr-1">
-              <div
-                v-for="result in results"
-                :key="result.jobId"
-                class="rounded-2xl border p-3"
-                :class="result.success ? 'border-emerald-500/30 bg-emerald-500/8' : (result.cancelled || result.skipped ? 'border-amber-500/30 bg-amber-500/8' : 'border-rose-500/30 bg-rose-500/8')"
-              >
-                <div class="flex flex-wrap items-center gap-2">
-                  <UBadge
-                    :color="result.success ? 'success' : (result.cancelled || result.skipped ? 'warning' : 'error')"
-                    variant="soft"
-                    :label="result.success ? 'success' : (result.cancelled ? 'cancelled' : (result.skipped ? 'skipped' : 'failed'))"
-                  />
-                  <UBadge color="neutral" variant="soft" :label="result.mediaKind" />
-                  <p class="text-sm font-medium text-white">
-                    {{ result.label || basename(result.inputPath) }}
-                  </p>
-                </div>
-
-                <p class="mt-2 line-clamp-3 text-sm leading-6 text-stone-300">
-                  {{ result.message }}
-                </p>
-
-                <p v-if="result.outputPath" class="mt-2 truncate text-xs text-stone-400">
-                  Output: {{ basename(result.outputPath) }}
-                </p>
-
-                <details v-if="result.ffmpegArgs.length" class="mt-2">
-                  <summary class="cursor-pointer text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
-                    ffmpeg args
-                  </summary>
-                  <pre class="mt-3 overflow-x-auto rounded-xl bg-black/40 p-3 text-xs text-stone-300">{{ result.ffmpegArgs.join(' ') }}</pre>
-                </details>
-              </div>
-            </div>
-
-            <UEmptyState
-              v-else
-              icon="i-lucide-badge-check"
-              title="No jobs have run yet"
-              description="Per-job results appear here while the workspace stays focused on setup in the center pane."
-            />
-          </UCard>
+          <AppUpdates
+            :update-status="updateStatus"
+            :bootstrap="bootstrap"
+            :update-loading="updateLoading"
+            :update-installing="updateInstalling"
+            :format-update-date="formatUpdateDate"
+            @check-for-updates="checkForUpdates"
+            @install-update="installUpdate"
+          />
+          <ResourcePlanner
+            :resource-plan="resourcePlan"
+            :resource-plan-loading="resourcePlanLoading"
+            :live-system-metrics="liveSystemMetrics"
+            :eta-caption="etaCaption"
+            :estimated-minutes-label="estimatedMinutesLabel"
+            :processing="processing"
+            :cancel-pending="cancelPending"
+            :run-queue-count="runQueueCount"
+            :effective-parallel-jobs="effectiveParallelJobs"
+            @cancel-batch="cancelBatch"
+            @enable-sequential-mode="enableSequentialMode"
+          />
+          <BatchMonitor
+            :overall-progress="overallProgress"
+            :activity-queue-count="activityQueue.length"
+            :gif-queue-count="gifQueue.length"
+            :files-count="files.length"
+            :completed-jobs="completedJobs"
+            :mode="mode"
+            :cancel-pending="cancelPending"
+          />
+          <BatchOutput :results="results" />
         </aside>
       </div>
     </div>
