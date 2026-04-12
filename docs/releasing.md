@@ -47,16 +47,21 @@ Add this repository variable:
 
 ## 3. Bump the app version
 
-Update the version in:
+Set the version with:
+
+```bash
+pnpm version:set 0.1.1
+```
+
+This updates:
 
 - [src-tauri/tauri.conf.json](../src-tauri/tauri.conf.json)
 - [src-tauri/Cargo.toml](../src-tauri/Cargo.toml)
-
-Keep them aligned.
+- [src-tauri/Cargo.lock](../src-tauri/Cargo.lock)
 
 ## 4. Create a release tag
 
-Commit the version bump, then create and push a tag:
+Commit the version bump, then create and push a matching tag:
 
 ```bash
 git tag v0.1.1
