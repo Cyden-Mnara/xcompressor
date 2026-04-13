@@ -72,7 +72,7 @@ jobs:
           unzip -o ffmpeg.zip -d ffmpeg-dist
           unzip -o ffprobe.zip -d ffprobe-dist
           cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffmpeg
-          cp ffprobe-dist/ffprobe src-tauri/resources/ffmpeg/macos/ffprobe
+          cp ffprobe-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
 
       - name: Prepare bundled FFmpeg (Linux)

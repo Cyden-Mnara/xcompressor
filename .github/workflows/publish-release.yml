@@ -28,7 +28,7 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       XCOMPRESSOR_UPDATER_ENDPOINT: https://github.com/${{ github.repository }}/releases/latest/download/latest.json
-      XCOMPRESSOR_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+      XCOMPRESSOR_UPDATER_PUBKEY: ${{ vars.XCOMPRESSOR_UPDATER_PUBKEY || secrets.XCOMPRESSOR_UPDATER_PUBKEY || vars.TAURI_UPDATER_PUBLIC_KEY || secrets.TAURI_UPDATER_PUBLIC_KEY }}
 
     steps:
       - name: Checkout repository
@@ -77,7 +77,7 @@ jobs:
           unzip -o ffmpeg.zip -d ffmpeg-dist
           unzip -o ffprobe.zip -d ffprobe-dist
           cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffmpeg
-          cp ffprobe-dist/ffprobe src-tauri/resources/ffmpeg/macos/ffprobe
+          cp ffprobe-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
 
       - name: Prepare bundled FFmpeg (Linux)
@@ -93,8 +93,6 @@ jobs:
 
       - name: Validate updater signing config
         shell: bash
-        env:
-          UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
         run: |
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY}" ]; then
             echo "::error title=Missing GitHub secret::Set TAURI_SIGNING_PRIVATE_KEY in repository secrets."
@@ -106,15 +104,15 @@ jobs:
             exit 1
           fi
 
-          if [ -z "${UPDATER_PUBLIC_KEY}" ]; then
-            echo "::error title=Missing GitHub variable::Set TAURI_UPDATER_PUBLIC_KEY in repository variables."
+          if [ -z "${XCOMPRESSOR_UPDATER_PUBKEY}" ]; then
+            echo "::error title=Missing updater public key::Set TAURI_UPDATER_PUBLIC_KEY or XCOMPRESSOR_UPDATER_PUBKEY in repository variables or secrets."
             exit 1
           fi
 
       - name: Publish Tauri release
         uses: tauri-apps/tauri-action@v0
         with:
-          args: --config '{"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ vars.TAURI_UPDATER_PUBLIC_KEY }}"}}}'
+          args: --config '{"bundle":{"createUpdaterArtifacts":true},"plugins":{"updater":{"pubkey":"${{ vars.XCOMPRESSOR_UPDATER_PUBKEY || secrets.XCOMPRESSOR_UPDATER_PUBKEY || vars.TAURI_UPDATER_PUBLIC_KEY || secrets.TAURI_UPDATER_PUBLIC_KEY }}"}}}'
           tagName: ${{ github.ref_name }}
           releaseName: xcompressor ${{ github.ref_name }}
           releaseBody: Desktop release for ${{ github.ref_name }}.
