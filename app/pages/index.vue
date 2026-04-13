@@ -520,6 +520,38 @@ function clearCurrentRunState() {
   cancelPending.value = false
 }
 
+function isCompletedStatus(status: string | undefined) {
+  return status === 'completed'
+}
+
+function pruneCompletedQueueItems() {
+  if (!Object.keys(queueProgress.value).length) {
+    return 0
+  }
+
+  if (activityQueue.value.length) {
+    const originalCount = activityQueue.value.length
+    activityQueue.value = activityQueue.value.filter(job => !isCompletedStatus(queueProgress.value[job.jobId]?.status))
+    return originalCount - activityQueue.value.length
+  } else if (mode.value === 'gif') {
+    const originalCount = gifSegments.value.length
+    gifSegments.value = gifSegments.value.filter(segment => !isCompletedStatus(queueProgress.value[segment.jobId]?.status))
+    return originalCount - gifSegments.value.length
+  }
+
+  const originalCount = files.value.length
+  files.value = files.value.filter(path => !isCompletedStatus(queueProgress.value[batchJobId(path, mode.value)]?.status))
+  return originalCount - files.value.length
+}
+
+function pendingQueueCount(hadActivityQueue: boolean) {
+  if (hadActivityQueue) {
+    return activityQueue.value.length
+  }
+
+  return mode.value === 'gif' ? gifQueue.value.length : files.value.length
+}
+
 function updateQueueProgress(event: BatchProgressEvent) {
   queueProgress.value = {
     ...queueProgress.value,
@@ -851,6 +883,31 @@ async function registerBatchListener() {
 
 async function runBatch() {
   await registerBatchListener()
+  const hadActivityQueue = activityQueue.value.length > 0
+  const prunedCount = pruneCompletedQueueItems()
+
+  if (prunedCount) {
+    toast.add({
+      title: 'Completed jobs removed',
+      description: `${prunedCount} completed ${prunedCount === 1 ? 'job was' : 'jobs were'} removed before rerun.`,
+      icon: 'i-lucide-list-checks',
+      color: 'success',
+      duration: 5000
+    })
+  }
+
+  if (!pendingQueueCount(hadActivityQueue)) {
+    clearCurrentRunState()
+    toast.add({
+      title: 'No pending jobs',
+      description: 'Everything in the queue has already completed.',
+      icon: 'i-lucide-circle-check',
+      color: 'neutral',
+      duration: 5000
+    })
+    return
+  }
+
   clearCurrentRunState()
   currentRunId.value = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   activeRunJobIds.value = activityQueue.value.length

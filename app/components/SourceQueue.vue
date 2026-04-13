@@ -96,7 +96,7 @@ function statusColor(status: string | undefined) {
             Selected media
           </h2> -->
         </div>
-        <p class="max-w-xs text-right text-sm text-stone-400">
+        <!-- <p class="max-w-xs text-right text-sm text-stone-400">
           <span v-if="activityQueueCount">
             These files feed the editor. The saved activity list is what runs.
           </span>
@@ -106,7 +106,7 @@ function statusColor(status: string | undefined) {
           <span v-else>
             Mixed video, image, and audio files are supported in one run.
           </span>
-        </p>
+        </p> -->
       </div>
     </template>
 
