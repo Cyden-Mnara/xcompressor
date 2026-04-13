@@ -1626,7 +1626,7 @@ fn run_ffmpeg(
                             status: "progress".into(),
                             progress_percent,
                             output_path: Some(output_path.display().to_string()),
-                            message: "FFmpeg is processing this file.".into(),
+                            message: "Processing.".into(),
                             speed: last_speed.clone(),
                         },
                     );

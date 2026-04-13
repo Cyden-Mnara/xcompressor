@@ -114,7 +114,7 @@ const runLabel = computed(() => {
     </template>
 
     <div class="space-y-5">
-      <div class="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+      <div class="grid gap-3 grid-cols-4 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
         <UButton
           icon="i-lucide-folder-plus"
           color="primary"

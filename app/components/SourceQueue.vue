@@ -154,9 +154,9 @@ function statusColor(status: string | undefined) {
           v-if="queueItemProgress(item)"
           class="space-y-2"
         >
-          <div class="h-2 overflow-hidden rounded-full bg-white/8">
+          <div class="h-1 overflow-hidden rounded-full bg-white/8">
             <div
-              class="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-sky-400 transition-[width] duration-300"
+              class="h-full rounded-full bg-linear-to-r from-amber-400 via-orange-400 to-sky-400 transition-[width] duration-300"
               :style="{ width: `${queueItemProgress(item)?.progressPercent ?? 0}%` }"
             />
           </div>
