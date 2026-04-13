@@ -20,6 +20,8 @@ jobs:
             runner: windows-latest
           - name: macOS
             runner: macos-latest
+          - name: Linux
+            runner: ubuntu-22.04
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,6 +48,12 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Tauri dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
@@ -69,8 +77,39 @@ jobs:
           unzip -o ffmpeg.zip -d ffmpeg-dist
           unzip -o ffprobe.zip -d ffprobe-dist
           cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffmpeg
-          cp ffprobe-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
+          cp ffprobe-dist/ffprobe src-tauri/resources/ffmpeg/macos/ffprobe
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
+
+      - name: Prepare bundled FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p src-tauri/resources/ffmpeg/linux
+          curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.tar.xz
+          mkdir -p ffmpeg-dist
+          tar -xf ffmpeg.tar.xz -C ffmpeg-dist --strip-components=1
+          cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/linux/ffmpeg
+          cp ffmpeg-dist/ffprobe src-tauri/resources/ffmpeg/linux/ffprobe
+          chmod +x src-tauri/resources/ffmpeg/linux/ffmpeg src-tauri/resources/ffmpeg/linux/ffprobe
+
+      - name: Validate updater signing config
+        shell: bash
+        env:
+          UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY}" ]; then
+            echo "::error title=Missing GitHub secret::Set TAURI_SIGNING_PRIVATE_KEY in repository secrets."
+            exit 1
+          fi
+
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD}" ]; then
+            echo "::error title=Missing GitHub secret::Set TAURI_SIGNING_PRIVATE_KEY_PASSWORD in repository secrets."
+            exit 1
+          fi
+
+          if [ -z "${UPDATER_PUBLIC_KEY}" ]; then
+            echo "::error title=Missing GitHub variable::Set TAURI_UPDATER_PUBLIC_KEY in repository variables."
+            exit 1
+          fi
 
       - name: Publish Tauri release
         uses: tauri-apps/tauri-action@v0

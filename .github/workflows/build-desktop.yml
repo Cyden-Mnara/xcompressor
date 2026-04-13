@@ -21,6 +21,9 @@ jobs:
           - name: macOS
             runner: macos-latest
             artifact_name: xcompressor-macos
+          - name: Linux
+            runner: ubuntu-22.04
+            artifact_name: xcompressor-linux
 
     steps:
       - name: Checkout repository
@@ -39,6 +42,12 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -63,8 +72,19 @@ jobs:
           unzip -o ffmpeg.zip -d ffmpeg-dist
           unzip -o ffprobe.zip -d ffprobe-dist
           cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffmpeg
-          cp ffprobe-dist/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
+          cp ffprobe-dist/ffprobe src-tauri/resources/ffmpeg/macos/ffprobe
           chmod +x src-tauri/resources/ffmpeg/macos/ffmpeg src-tauri/resources/ffmpeg/macos/ffprobe
+
+      - name: Prepare bundled FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p src-tauri/resources/ffmpeg/linux
+          curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.tar.xz
+          mkdir -p ffmpeg-dist
+          tar -xf ffmpeg.tar.xz -C ffmpeg-dist --strip-components=1
+          cp ffmpeg-dist/ffmpeg src-tauri/resources/ffmpeg/linux/ffmpeg
+          cp ffmpeg-dist/ffprobe src-tauri/resources/ffmpeg/linux/ffprobe
+          chmod +x src-tauri/resources/ffmpeg/linux/ffmpeg src-tauri/resources/ffmpeg/linux/ffprobe
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0" --locked
@@ -85,4 +105,7 @@ jobs:
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
           if-no-files-found: error
