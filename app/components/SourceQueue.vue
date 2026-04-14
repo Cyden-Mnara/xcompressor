@@ -16,22 +16,49 @@ type GifSegment = {
   width: number
 }
 
-type QueueItem = string | GifSegment
+type MixedJob = {
+  jobId: string
+  label: string
+  inputPath: string
+  mode: string
+  videoFormat: string
+  imageFormat: string
+  audioFormat: string
+  resizeLongEdge: number | null
+  gif: {
+    startSeconds: number
+    durationSeconds: number
+    fps: number
+    width: number
+  } | null
+}
+
+type QueueItem = string | GifSegment | MixedJob
 
 const props = defineProps<{
   mode: string
   files: string[]
   gifQueue: GifSegment[]
+  activityQueue: MixedJob[]
   activityQueueCount: number
+  selectedJobId: string
   queueProgress: Record<string, QueueProgress>
 }>()
 
 const emit = defineEmits<{
   removeFile: [path: string]
   removeGifSegment: [jobId: string]
+  removeActivityJob: [jobId: string]
+  selectActivityJob: [jobId: string]
 }>()
 
-const visibleItems = computed<QueueItem[]>(() => props.mode === 'gif' ? props.gifQueue : props.files)
+const visibleItems = computed<QueueItem[]>(() => {
+  if (props.activityQueue.length) {
+    return props.activityQueue
+  }
+
+  return props.mode === 'gif' ? props.gifQueue : props.files
+})
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -65,6 +92,51 @@ function queueItemKey(item: QueueItem) {
 
 function queueItemProgress(item: QueueItem) {
   return props.queueProgress[queueItemKey(item)]
+}
+
+function itemInputPath(item: QueueItem) {
+  return typeof item === 'string' ? item : item.inputPath
+}
+
+function itemLabel(item: QueueItem) {
+  if (typeof item === 'string') {
+    return basename(item)
+  }
+
+  return item.label
+}
+
+function isMixedJob(item: QueueItem): item is MixedJob {
+  return typeof item !== 'string' && 'mode' in item
+}
+
+function describeMixedJob(job: MixedJob) {
+  if (job.mode === 'gif' && job.gif) {
+    return `GIF • ${job.gif.startSeconds.toFixed(1)}s -> ${(job.gif.startSeconds + job.gif.durationSeconds).toFixed(1)}s • ${job.gif.fps} fps • ${job.gif.width}px`
+  }
+
+  const kind = detectKind(job.inputPath)
+  const target = kind === 'video'
+    ? job.videoFormat
+    : kind === 'image'
+      ? job.imageFormat
+      : job.audioFormat
+  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px edge` : ''
+  return `${job.mode} -> ${target}${resize}`
+}
+
+function removeItem(item: QueueItem) {
+  if (typeof item === 'string') {
+    emit('removeFile', item)
+    return
+  }
+
+  if (isMixedJob(item)) {
+    emit('removeActivityJob', item.jobId)
+    return
+  }
+
+  emit('removeGifSegment', item.jobId)
 }
 
 function statusColor(status: string | undefined) {
@@ -117,16 +189,27 @@ function statusColor(status: string | undefined) {
       <div
         v-for="item in visibleItems"
         :key="typeof item === 'string' ? item : item.jobId"
-        class="flex flex-col gap-3 rounded-lg border border-white/8 bg-white/5 p-4"
+        class="flex flex-col gap-3 rounded-lg border p-4 transition"
+        :class="isMixedJob(item) && item.jobId === selectedJobId ? 'border-sky-300/60 bg-sky-400/10' : 'border-white/8 bg-white/5'"
+        role="button"
+        tabindex="0"
+        @click="isMixedJob(item) && emit('selectActivityJob', item.jobId)"
+        @keydown.enter="isMixedJob(item) && emit('selectActivityJob', item.jobId)"
       >
         <div class="flex flex-wrap items-center gap-2">
           <p class="min-w-0 flex-1 truncate text-sm font-medium text-white">
-            {{ typeof item === 'string' ? basename(item) : item.label }}
+            {{ itemLabel(item) }}
           </p>
           <UBadge
             color="neutral"
             variant="soft"
-            :label="detectKind(typeof item === 'string' ? item : item.inputPath)"
+            :label="detectKind(itemInputPath(item))"
+          />
+          <UBadge
+            v-if="isMixedJob(item)"
+            color="primary"
+            variant="soft"
+            :label="item.mode"
           />
           <UBadge
             v-if="mode === 'gif' && typeof item === 'string' && detectKind(item) !== 'video'"
@@ -142,10 +225,16 @@ function statusColor(status: string | undefined) {
           />
         </div>
         <p class="truncate text-xs text-stone-500">
-          {{ typeof item === 'string' ? item : item.inputPath }}
+          {{ itemInputPath(item) }}
         </p>
         <p
-          v-if="mode === 'gif' && typeof item !== 'string'"
+          v-if="isMixedJob(item)"
+          class="text-xs text-stone-400"
+        >
+          {{ describeMixedJob(item) }}
+        </p>
+        <p
+          v-if="mode === 'gif' && typeof item !== 'string' && !isMixedJob(item)"
           class="text-xs text-stone-400"
         >
           {{ item.startSeconds.toFixed(1) }}s -> {{ (item.startSeconds + item.durationSeconds).toFixed(1) }}s • {{ item.fps }} fps • {{ item.width }}px
@@ -182,9 +271,9 @@ function statusColor(status: string | undefined) {
             icon="i-lucide-x"
             color="neutral"
             variant="ghost"
-            @click="typeof item === 'string' ? emit('removeFile', item) : emit('removeGifSegment', item.jobId)"
+            @click.stop="removeItem(item)"
           >
-            {{ mode === 'gif' && typeof item !== 'string' ? 'Remove clip' : 'Remove' }}
+            {{ mode === 'gif' && typeof item !== 'string' && !isMixedJob(item) ? 'Remove clip' : 'Remove' }}
           </UButton>
         </div>
       </div>
@@ -193,8 +282,8 @@ function statusColor(status: string | undefined) {
     <UEmptyState
       v-else
       icon="i-lucide-clapperboard"
-      :title="mode === 'gif' ? 'No GIF clips queued' : 'No media queued'"
-      :description="mode === 'gif' ? 'Preview a video and add one or more clip ranges to the GIF queue.' : 'Use Add media to select videos, images, and audio files from disk.'"
+      title="No media queued"
+      description="Drag files here or use Add media. Each file gets default settings you can edit after selecting it."
     />
   </UCard>
 </template>

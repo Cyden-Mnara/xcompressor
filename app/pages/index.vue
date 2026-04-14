@@ -178,12 +178,14 @@ const queueProgress = ref<Record<string, QueueProgress>>({})
 const activeRunJobIds = ref<string[]>([])
 const gifSegments = ref<GifSegment[]>([])
 const activityQueue = ref<MixedJob[]>([])
+const selectedQueueJobId = ref('')
 const selectedGifVideo = ref('')
 const selectedGifVideoSrc = ref('')
 const selectedGifVideoDuration = ref(0)
 const gifPreviewError = ref('')
 const gifPreviewVideo = ref<HTMLVideoElement | null>(null)
 const gifPlayCaptureActive = ref(false)
+const dragActive = ref(false)
 const processing = ref(false)
 const cancelPending = ref(false)
 const currentRunId = ref('')
@@ -209,6 +211,8 @@ const videoFileOptions = computed(() =>
 )
 const nonVideoFiles = computed(() => files.value.filter(path => detectKind(path) !== 'video'))
 const gifQueue = computed(() => gifSegments.value)
+const selectedQueueJob = computed(() => activityQueue.value.find(job => job.jobId === selectedQueueJobId.value) ?? null)
+const selectedQueueMediaKind = computed(() => selectedQueueJob.value ? detectKind(selectedQueueJob.value.inputPath) : selectedMediaType.value)
 const runQueue = computed<QueueItem[] | MixedJob[]>(() => {
   if (activityQueue.value.length) {
     return activityQueue.value
@@ -234,7 +238,7 @@ const gifEndSeconds = computed({
   }
 })
 const canRun = computed(() => {
-  if (processing.value || !outputDir.value.length) {
+  if (processing.value) {
     return false
   }
 
@@ -243,7 +247,11 @@ const canRun = computed(() => {
   }
 
   if (activityQueue.value.length) {
-    return true
+    return activityQueue.value.every(job => job.outputDir.length > 0)
+  }
+
+  if (!outputDir.value.length) {
+    return false
   }
 
   if (mode.value === 'gif') {
@@ -347,6 +355,7 @@ const cpuUsedPercent = computed(() => {
 })
 
 let unlistenBatchProgress: null | (() => void) = null
+let unlistenTauriDragDrop: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
 let liveMetricsStartTimer: ReturnType<typeof setTimeout> | null = null
 let resourcePlanRequestId = 0
@@ -395,6 +404,123 @@ function mediaExtensions(kind: string) {
 
 function batchJobId(path: string, operation: string) {
   return `${operation}::${path}`
+}
+
+function queueJobId(path: string) {
+  return `mixed::${path}`
+}
+
+function updateSelectedQueueJob(patch: Partial<MixedJob>) {
+  const selectedJob = selectedQueueJob.value
+  if (!selectedJob) {
+    return
+  }
+
+  activityQueue.value = activityQueue.value.map((job) => {
+    if (job.jobId !== selectedJob.jobId) {
+      return job
+    }
+
+    const nextJob = {
+      ...job,
+      ...patch
+    }
+    const mediaKind = detectKind(nextJob.inputPath)
+
+    if (nextJob.mode !== 'gif' || mediaKind !== 'video') {
+      nextJob.gif = null
+      nextJob.outputSuffix = null
+    } else if (!nextJob.gif) {
+      nextJob.gif = {
+        startSeconds: gifOptions.startSeconds,
+        durationSeconds: gifOptions.durationSeconds,
+        fps: gifOptions.fps,
+        width: gifOptions.width
+      }
+      nextJob.outputSuffix = `gif-${Date.now().toString(36)}`
+    }
+
+    nextJob.resizeLongEdge = nextJob.mode === 'gif' || mediaKind === 'audio'
+      ? null
+      : nextJob.resizeLongEdge
+    nextJob.label = `${basename(nextJob.inputPath)} • ${nextJob.mode}`
+
+    return nextJob
+  })
+}
+
+function defaultModeForPath(path: string) {
+  const mediaKind = detectKind(path)
+  if (mode.value === 'gif') {
+    return mediaKind === 'video' ? 'gif' : 'compress'
+  }
+
+  return mode.value
+}
+
+function defaultGifForPath(path: string) {
+  if (defaultModeForPath(path) !== 'gif' || detectKind(path) !== 'video') {
+    return null
+  }
+
+  return {
+    startSeconds: gifOptions.startSeconds,
+    durationSeconds: gifOptions.durationSeconds,
+    fps: gifOptions.fps,
+    width: gifOptions.width
+  }
+}
+
+function makeDefaultQueueJob(path: string): MixedJob {
+  const nextMode = defaultModeForPath(path)
+  const mediaKind = detectKind(path)
+
+  return {
+    inputPath: path,
+    outputDir: outputDir.value,
+    mode: nextMode,
+    presetId: presetId.value,
+    videoFormat: videoFormat.value,
+    imageFormat: imageFormat.value,
+    audioFormat: audioFormat.value,
+    jobId: queueJobId(path),
+    label: `${basename(path)} • ${nextMode}`,
+    resizeLongEdge: nextMode === 'gif' || mediaKind === 'audio' ? null : resizeLongEdge.value,
+    gif: defaultGifForPath(path),
+    outputSuffix: nextMode === 'gif' ? `gif-${Date.now().toString(36)}` : null,
+    overwrite: true
+  }
+}
+
+async function addPathsToQueue(paths: string[]) {
+  const supportedPaths = paths.filter(path => detectKind(path) !== 'unknown')
+  const uniqueSupportedPaths = Array.from(new Set(supportedPaths))
+  const existingPaths = new Set(files.value)
+  const newPaths = uniqueSupportedPaths.filter(path => !existingPaths.has(path))
+  const skippedCount = paths.length - newPaths.length
+
+  if (newPaths.length) {
+    files.value = Array.from(new Set([...files.value, ...newPaths]))
+    const existingJobIds = new Set(activityQueue.value.map(job => job.jobId))
+    const nextJobs = newPaths
+      .map(path => makeDefaultQueueJob(path))
+      .filter(job => !existingJobIds.has(job.jobId))
+
+    activityQueue.value = [...activityQueue.value, ...nextJobs]
+    selectedQueueJobId.value = nextJobs.at(-1)?.jobId ?? selectedQueueJobId.value
+    syncSelectedGifVideo()
+    await updateSelectedGifVideoSrc()
+  }
+
+  if (newPaths.length || skippedCount) {
+    toast.add({
+      title: newPaths.length ? 'Files added' : 'No files added',
+      description: `${newPaths.length} added${skippedCount ? `, ${skippedCount} skipped` : ''}.`,
+      icon: newPaths.length ? 'i-lucide-check-circle-2' : 'i-lucide-circle-alert',
+      color: newPaths.length ? 'success' : 'warning',
+      duration: 5000
+    })
+  }
 }
 
 function clampGifRange() {
@@ -467,8 +593,8 @@ async function pickFiles() {
     directory: false,
     filters: [
       {
-        name: `${selectedMediaType.value.charAt(0).toUpperCase()}${selectedMediaType.value.slice(1)} media`,
-        extensions: mediaExtensions(selectedMediaType.value)
+        name: 'Supported media',
+        extensions: mediaExtensions('all')
       }
     ]
   })
@@ -478,9 +604,7 @@ async function pickFiles() {
   }
 
   const nextPaths = Array.isArray(selection) ? selection : [selection]
-  files.value = Array.from(new Set([...files.value, ...nextPaths]))
-  syncSelectedGifVideo()
-  await updateSelectedGifVideoSrc()
+  await addPathsToQueue(nextPaths)
 }
 
 async function pickOutputDir() {
@@ -498,6 +622,10 @@ async function pickOutputDir() {
 function removeFile(path: string) {
   files.value = files.value.filter(item => item !== path)
   gifSegments.value = gifSegments.value.filter(segment => segment.inputPath !== path)
+  activityQueue.value = activityQueue.value.filter(job => job.inputPath !== path)
+  if (selectedQueueJob.value?.inputPath === path) {
+    selectedQueueJobId.value = activityQueue.value[0]?.jobId ?? ''
+  }
   syncSelectedGifVideo()
 }
 
@@ -507,6 +635,7 @@ function clearQueue() {
   queueProgress.value = {}
   gifSegments.value = []
   activityQueue.value = []
+  selectedQueueJobId.value = ''
   selectedGifVideo.value = ''
   selectedGifVideoSrc.value = ''
   selectedGifVideoDuration.value = 0
@@ -848,6 +977,41 @@ function addCurrentActivity() {
     return
   }
 
+  if (activityQueue.value.length) {
+    activityQueue.value = activityQueue.value.map((job) => {
+      const mediaKind = detectKind(job.inputPath)
+      const nextMode = mediaKind === 'video' ? mode.value : mode.value === 'gif' ? 'compress' : mode.value
+      return {
+        ...job,
+        outputDir: outputDir.value,
+        mode: nextMode,
+        presetId: presetId.value,
+        videoFormat: videoFormat.value,
+        imageFormat: imageFormat.value,
+        audioFormat: audioFormat.value,
+        resizeLongEdge: nextMode === 'gif' || mediaKind === 'audio' ? null : resizeLongEdge.value,
+        gif: nextMode === 'gif' && mediaKind === 'video'
+          ? {
+              startSeconds: gifOptions.startSeconds,
+              durationSeconds: gifOptions.durationSeconds,
+              fps: gifOptions.fps,
+              width: gifOptions.width
+            }
+          : null,
+        outputSuffix: nextMode === 'gif' && mediaKind === 'video' ? `gif-${Date.now().toString(36)}` : null,
+        label: `${basename(job.inputPath)} • ${nextMode}`
+      }
+    })
+    toast.add({
+      title: 'Defaults applied',
+      description: `${activityQueue.value.length} queued jobs now use the current settings.`,
+      icon: 'i-lucide-check-circle-2',
+      color: 'success',
+      duration: 5000
+    })
+    return
+  }
+
   if (mode.value === 'gif') {
     const nextJobs = gifQueue.value.map(segment => ({
       ...makeActivityJobBase(segment.inputPath, 'gif'),
@@ -886,11 +1050,65 @@ function addCurrentActivity() {
 }
 
 function removeActivityJob(jobId: string) {
+  const removedJob = activityQueue.value.find(job => job.jobId === jobId)
   activityQueue.value = activityQueue.value.filter(job => job.jobId !== jobId)
+  if (removedJob && !activityQueue.value.some(job => job.inputPath === removedJob.inputPath)) {
+    files.value = files.value.filter(path => path !== removedJob.inputPath)
+    gifSegments.value = gifSegments.value.filter(segment => segment.inputPath !== removedJob.inputPath)
+  }
+  if (selectedQueueJobId.value === jobId) {
+    selectedQueueJobId.value = activityQueue.value[0]?.jobId ?? ''
+  }
+  syncSelectedGifVideo()
 }
 
 function clearActivityQueue() {
   activityQueue.value = []
+  selectedQueueJobId.value = ''
+}
+
+async function handleDrop(event: DragEvent) {
+  event.preventDefault()
+  dragActive.value = false
+  const droppedFiles = Array.from(event.dataTransfer?.files ?? [])
+  const paths = droppedFiles
+    .map(file => (file as File & { path?: string }).path ?? '')
+    .filter(Boolean)
+
+  await addPathsToQueue(paths)
+}
+
+function handleDragOver(event: DragEvent) {
+  event.preventDefault()
+  dragActive.value = true
+}
+
+function handleDragLeave(event: DragEvent) {
+  if (event.currentTarget === event.target) {
+    dragActive.value = false
+  }
+}
+
+async function registerTauriDragDrop() {
+  if (unlistenTauriDragDrop) {
+    return
+  }
+
+  const { getCurrentWebview } = await import('@tauri-apps/api/webview')
+  unlistenTauriDragDrop = await getCurrentWebview().onDragDropEvent((event) => {
+    if (event.payload.type === 'enter' || event.payload.type === 'over') {
+      dragActive.value = true
+      return
+    }
+
+    if (event.payload.type === 'drop') {
+      dragActive.value = false
+      void addPathsToQueue(event.payload.paths)
+      return
+    }
+
+    dragActive.value = false
+  })
 }
 
 async function registerBatchListener() {
@@ -1067,6 +1285,7 @@ async function openSelectedGifVideoInSystemPlayer() {
 }
 
 onMounted(() => {
+  void registerTauriDragDrop()
   void loadBootstrap().then(() => {
     void refreshResourcePlan()
   })
@@ -1082,6 +1301,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   unlistenBatchProgress?.()
+  unlistenTauriDragDrop?.()
   stopLiveMetricsPolling()
 })
 
@@ -1103,6 +1323,17 @@ watch(selectedGifVideo, async () => {
 
 watch(selectedGifVideoDuration, () => {
   clampGifRange()
+})
+
+watch(outputDir, (nextOutputDir) => {
+  if (!nextOutputDir) {
+    return
+  }
+
+  activityQueue.value = activityQueue.value.map(job => ({
+    ...job,
+    outputDir: job.outputDir || nextOutputDir
+  }))
 })
 
 watch([files, gifSegments, activityQueue, maxParallelJobs, outputDir, presetId, resizeLongEdge, videoFormat, imageFormat, audioFormat], async () => {
@@ -1143,7 +1374,25 @@ function onGifVideoError() {
 </script>
 
 <template>
-  <div class="min-h-screen text-stone-100">
+  <div
+    class="relative min-h-screen text-stone-100"
+    @drop="handleDrop"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+  >
+    <div
+      v-if="dragActive"
+      class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-4 border-dashed border-amber-300 bg-black/70"
+    >
+      <div class="rounded-lg border border-amber-300/40 bg-stone-950 p-6 text-center shadow-2xl">
+        <p class="text-xl font-semibold text-white">
+          Drop files to add them to the queue
+        </p>
+        <p class="mt-2 text-sm text-stone-300">
+          Videos, images, and audio get default settings that you can edit per file.
+        </p>
+      </div>
+    </div>
     <div class="m-auto h-full max-w-425 px-4 py-4 lg:px-6">
       <div
         v-if="canOpenDevelopment"
@@ -1245,12 +1494,15 @@ function onGifVideoError() {
             :processing="processing"
             :cancel-pending="cancelPending"
             :can-run="canRun"
+            :selected-job="selectedQueueJob"
+            :selected-media-kind="selectedQueueMediaKind"
             @pick-files="pickFiles"
             @pick-output-dir="pickOutputDir"
             @clear-queue="clearQueue"
             @add-current-activity="addCurrentActivity"
             @run-batch="runBatch"
             @cancel-batch="cancelBatch"
+            @update-selected-job="updateSelectedQueueJob"
           />
 
           <GifEditor
@@ -1312,10 +1564,14 @@ function onGifVideoError() {
             :mode="mode"
             :files="files"
             :gif-queue="gifQueue"
+            :activity-queue="activityQueue"
             :activity-queue-count="activityQueue.length"
+            :selected-job-id="selectedQueueJobId"
             :queue-progress="queueProgress"
             @remove-file="removeFile"
             @remove-gif-segment="removeGifSegment"
+            @remove-activity-job="removeActivityJob"
+            @select-activity-job="selectedQueueJobId = $event"
           />
         </aside>
       </div>
