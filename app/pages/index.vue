@@ -569,6 +569,29 @@ function updateQueueProgress(event: BatchProgressEvent) {
   }
 }
 
+function markActiveJobsFailed(message: string) {
+  const failedProgress = activeRunJobIds.value.reduce<Record<string, QueueProgress>>((nextProgress, jobId) => {
+    const previousProgress = queueProgress.value[jobId]
+    nextProgress[jobId] = {
+      jobId,
+      label: previousProgress?.label ?? null,
+      mediaKind: previousProgress?.mediaKind ?? 'system',
+      operation: previousProgress?.operation ?? mode.value,
+      status: 'failed',
+      progressPercent: previousProgress?.progressPercent ?? 0,
+      outputPath: previousProgress?.outputPath ?? null,
+      message,
+      speed: previousProgress?.speed ?? null
+    }
+    return nextProgress
+  }, {})
+
+  queueProgress.value = {
+    ...queueProgress.value,
+    ...failedProgress
+  }
+}
+
 function isTerminalStatus(status: string | undefined) {
   return ['completed', 'failed', 'skipped', 'cancelled'].includes(status ?? '')
 }
@@ -986,6 +1009,8 @@ async function runBatch() {
 
     results.value = response.results
   } catch (error) {
+    const message = String(error)
+    markActiveJobsFailed(message)
     results.value = [{
       jobId: 'batch-error',
       label: 'Batch error',
@@ -997,7 +1022,7 @@ async function runBatch() {
       skipped: false,
       cancelled: false,
       ffmpegArgs: [],
-      message: String(error)
+      message
     }]
   } finally {
     processing.value = false

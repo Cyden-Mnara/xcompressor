@@ -32,5 +32,56 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  icon: {
+    provider: 'none',
+    clientBundle: {
+      icons: [
+        'lucide:arrow-down',
+        'lucide:arrow-left',
+        'lucide:arrow-right',
+        'lucide:arrow-up',
+        'lucide:badge-check',
+        'lucide:check',
+        'lucide:check-circle-2',
+        'lucide:chevron-down',
+        'lucide:chevron-left',
+        'lucide:chevron-right',
+        'lucide:chevron-up',
+        'lucide:circle-alert',
+        'lucide:circle-check',
+        'lucide:clapperboard',
+        'lucide:download',
+        'lucide:external-link',
+        'lucide:film',
+        'lucide:folder-open',
+        'lucide:folder-output',
+        'lucide:folder-plus',
+        'lucide:git-commit-horizontal',
+        'lucide:image',
+        'lucide:info',
+        'lucide:layers-3',
+        'lucide:layout-dashboard',
+        'lucide:list-checks',
+        'lucide:monitor',
+        'lucide:monitor-play',
+        'lucide:moon',
+        'lucide:music',
+        'lucide:play',
+        'lucide:plus',
+        'lucide:refresh-ccw',
+        'lucide:refresh-cw',
+        'lucide:skip-back',
+        'lucide:square',
+        'lucide:sun',
+        'lucide:terminal',
+        'lucide:trash-2',
+        'lucide:video',
+        'lucide:x'
+      ],
+      scan: true,
+      sizeLimitKb: 256
+    }
   }
 })

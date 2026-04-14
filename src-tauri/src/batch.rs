@@ -280,6 +280,7 @@ fn bundled_tool_path_candidates(app: &AppHandle, tool: &str) -> Vec<PathBuf> {
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         candidates.push(resource_dir.join(&relative_path));
+        candidates.push(resource_dir.join("resources").join(&relative_path));
     }
 
     candidates.push(
