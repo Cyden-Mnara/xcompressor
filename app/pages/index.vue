@@ -143,11 +143,6 @@ type MixedJob = {
 
 type QueueItem = string | GifSegment
 
-const modeOptions = [
-  { label: 'Compress', value: 'compress' },
-  { label: 'Convert', value: 'convert' },
-  { label: 'Create GIF', value: 'gif' }
-]
 const themeOptions = [
   { label: 'System', value: 'system' },
   { label: 'Dark', value: 'dark' },
@@ -198,10 +193,10 @@ const resourcePlan = ref<ResourcePlan | null>(null)
 const resourcePlanLoading = ref(false)
 const liveSystemMetrics = ref<LiveSystemMetrics | null>(null)
 const toast = useToast()
-const activePreset = computed(() => bootstrap.value?.presets.find(preset => preset.id === presetId.value))
-const visibleModeOptions = computed(() => selectedMediaType.value === 'video'
-  ? modeOptions
-  : modeOptions.filter(option => option.value !== 'gif'))
+const selectedQueueJob = computed(() => activityQueue.value.find(job => job.jobId === selectedQueueJobId.value) ?? null)
+const activeIntroPreset = computed(() =>
+  bootstrap.value?.presets.find(preset => preset.id === (selectedQueueJob.value?.presetId ?? presetId.value))
+)
 const videoFiles = computed(() => files.value.filter(path => detectKind(path) === 'video'))
 const videoFileOptions = computed(() =>
   videoFiles.value.map(path => ({
@@ -211,7 +206,6 @@ const videoFileOptions = computed(() =>
 )
 const nonVideoFiles = computed(() => files.value.filter(path => detectKind(path) !== 'video'))
 const gifQueue = computed(() => gifSegments.value)
-const selectedQueueJob = computed(() => activityQueue.value.find(job => job.jobId === selectedQueueJobId.value) ?? null)
 const selectedQueueMediaKind = computed(() => selectedQueueJob.value ? detectKind(selectedQueueJob.value.inputPath) : selectedMediaType.value)
 const runQueue = computed<QueueItem[] | MixedJob[]>(() => {
   if (activityQueue.value.length) {
@@ -410,6 +404,17 @@ function queueJobId(path: string) {
   return `mixed::${path}`
 }
 
+function syncActiveMediaTypeFromPath(path: string | undefined) {
+  if (!path) {
+    return
+  }
+
+  const mediaKind = detectKind(path)
+  if (mediaKind !== 'unknown') {
+    selectedMediaType.value = mediaKind
+  }
+}
+
 function updateSelectedQueueJob(patch: Partial<MixedJob>) {
   const selectedJob = selectedQueueJob.value
   if (!selectedJob) {
@@ -508,6 +513,7 @@ async function addPathsToQueue(paths: string[]) {
 
     activityQueue.value = [...activityQueue.value, ...nextJobs]
     selectedQueueJobId.value = nextJobs.at(-1)?.jobId ?? selectedQueueJobId.value
+    syncActiveMediaTypeFromPath(nextJobs.at(-1)?.inputPath ?? newPaths.at(-1))
     syncSelectedGifVideo()
     await updateSelectedGifVideoSrc()
   }
@@ -626,6 +632,7 @@ function removeFile(path: string) {
   if (selectedQueueJob.value?.inputPath === path) {
     selectedQueueJobId.value = activityQueue.value[0]?.jobId ?? ''
   }
+  syncActiveMediaTypeFromPath(selectedQueueJob.value?.inputPath ?? files.value[0])
   syncSelectedGifVideo()
 }
 
@@ -1059,6 +1066,7 @@ function removeActivityJob(jobId: string) {
   if (selectedQueueJobId.value === jobId) {
     selectedQueueJobId.value = activityQueue.value[0]?.jobId ?? ''
   }
+  syncActiveMediaTypeFromPath(selectedQueueJob.value?.inputPath ?? files.value[0])
   syncSelectedGifVideo()
 }
 
@@ -1269,13 +1277,6 @@ function enableSequentialMode() {
   maxParallelJobs.value = 1
 }
 
-function selectMediaType(mediaType: string) {
-  selectedMediaType.value = mediaType
-  if (mediaType !== 'video' && mode.value === 'gif') {
-    mode.value = 'compress'
-  }
-}
-
 async function openSelectedGifVideoInSystemPlayer() {
   if (!selectedGifVideo.value) {
     return
@@ -1382,7 +1383,7 @@ function onGifVideoError() {
   >
     <div
       v-if="dragActive"
-      class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-4 border-dashed border-amber-300 bg-black/70"
+      class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-3 border-dashed border-amber-300 bg-black/70"
     >
       <div class="rounded-lg border border-amber-300/40 bg-stone-950 p-6 text-center shadow-2xl">
         <p class="text-xl font-semibold text-white">
@@ -1467,9 +1468,8 @@ function onGifVideoError() {
         <aside class="grid min-h-0 gap-4">
           <IntroPanel
             :bootstrap="bootstrap"
-            :active-preset="activePreset"
-            :active-media-type="selectedMediaType"
-            @select-media-type="selectMediaType"
+            :active-preset="activeIntroPreset"
+            :active-media-type="selectedQueueMediaKind"
           />
         </aside>
 
@@ -1477,15 +1477,8 @@ function onGifVideoError() {
           <JobConfigurator
             v-model:output-dir="outputDir"
             v-model:mode="mode"
-            v-model:preset-id="presetId"
-            v-model:video-format="videoFormat"
-            v-model:image-format="imageFormat"
-            v-model:audio-format="audioFormat"
-            v-model:resize-long-edge="resizeLongEdge"
             :bootstrap="bootstrap"
             :files-count="files.length"
-            :mode-options="visibleModeOptions"
-            :media-type="selectedMediaType"
             :video-targets="targetFormats('video')"
             :image-targets="targetFormats('image')"
             :audio-targets="targetFormats('audio')"
@@ -1565,7 +1558,6 @@ function onGifVideoError() {
             :files="files"
             :gif-queue="gifQueue"
             :activity-queue="activityQueue"
-            :activity-queue-count="activityQueue.length"
             :selected-job-id="selectedQueueJobId"
             :queue-progress="queueProgress"
             @remove-file="removeFile"

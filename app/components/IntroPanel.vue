@@ -20,14 +20,10 @@ type BootstrapData = {
   gifWorkflow: string[]
 }
 
-defineProps<{
+const props = defineProps<{
   bootstrap: BootstrapData | null
   activePreset: BootstrapPreset | undefined
   activeMediaType: string
-}>()
-
-const emit = defineEmits<{
-  selectMediaType: [mediaType: string]
 }>()
 
 const mediaTypes = [
@@ -35,6 +31,10 @@ const mediaTypes = [
   { label: 'Image', value: 'image', icon: 'i-lucide-image' },
   { label: 'Audio', value: 'audio', icon: 'i-lucide-music' }
 ]
+
+const activeMediaLabel = computed(() =>
+  mediaTypes.find(mediaType => mediaType.value === props.activeMediaType)?.label ?? 'Media'
+)
 </script>
 
 <template>
@@ -61,26 +61,31 @@ const mediaTypes = [
             xcompressor
           </h1>
           <p class="mt-2 text-sm leading-6 text-stone-300">
-            Choose what you are working on, add media, tune the output, then run the queue.
+            Add media, tune the selected output, then run the queue.
           </p>
         </div>
       </div>
     </template>
 
     <div class="space-y-4">
-      <div class="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-        <UButton
-          v-for="mediaType in mediaTypes"
-          :key="mediaType.value"
-          :icon="mediaType.icon"
-          :color="activeMediaType === mediaType.value ? 'primary' : 'neutral'"
-          :variant="activeMediaType === mediaType.value ? 'solid' : 'soft'"
-          size="lg"
-          block
-          @click="emit('selectMediaType', mediaType.value)"
-        >
-          {{ mediaType.label }}
-        </UButton>
+      <div class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
+          {{ activeMediaLabel }} setup
+        </p>
+        <div class="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+          <div
+            v-for="mediaType in mediaTypes"
+            :key="mediaType.value"
+            class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium"
+            :class="activeMediaType === mediaType.value ? 'border-amber-300/50 bg-amber-400/10 text-white' : 'border-white/8 bg-white/5 text-stone-400'"
+          >
+            <UIcon
+              :name="mediaType.icon"
+              class="size-4"
+            />
+            <span>{{ mediaType.label }}</span>
+          </div>
+        </div>
       </div>
 
       <div class="space-y-4 grid gap-4 grid-cols-2 xl:grid-cols-1">

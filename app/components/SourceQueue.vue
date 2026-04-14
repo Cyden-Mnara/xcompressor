@@ -40,7 +40,6 @@ const props = defineProps<{
   files: string[]
   gifQueue: GifSegment[]
   activityQueue: MixedJob[]
-  activityQueueCount: number
   selectedJobId: string
   queueProgress: Record<string, QueueProgress>
 }>()
@@ -164,21 +163,7 @@ function statusColor(status: string | undefined) {
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
             Source queue
           </p>
-          <!-- <h2 class="mt-2 text-xl font-semibold text-white">
-            Selected media
-          </h2> -->
         </div>
-        <!-- <p class="max-w-xs text-right text-sm text-stone-400">
-          <span v-if="activityQueueCount">
-            These files feed the editor. The saved activity list is what runs.
-          </span>
-          <span v-else-if="mode === 'gif'">
-            GIF export is driven by the queued clips below.
-          </span>
-          <span v-else>
-            Mixed video, image, and audio files are supported in one run.
-          </span>
-        </p> -->
       </div>
     </template>
 
@@ -190,7 +175,7 @@ function statusColor(status: string | undefined) {
         v-for="item in visibleItems"
         :key="typeof item === 'string' ? item : item.jobId"
         class="flex flex-col gap-3 rounded-lg border p-4 transition"
-        :class="isMixedJob(item) && item.jobId === selectedJobId ? 'border-sky-300/60 bg-sky-400/10' : 'border-white/8 bg-white/5'"
+        :class="isMixedJob(item) && item.jobId === selectedJobId ? 'border-amber-300/60 bg-amber-400/10' : 'border-white/8 bg-white/5'"
         role="button"
         tabindex="0"
         @click="isMixedJob(item) && emit('selectActivityJob', item.jobId)"

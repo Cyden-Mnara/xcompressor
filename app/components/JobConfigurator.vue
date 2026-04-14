@@ -32,8 +32,6 @@ type MixedJob = {
 const props = defineProps<{
   bootstrap: BootstrapData | null
   filesCount: number
-  modeOptions: { label: string, value: string }[]
-  mediaType: string
   videoTargets: string[]
   imageTargets: string[]
   audioTargets: string[]
@@ -58,52 +56,9 @@ const emit = defineEmits<{
 
 const outputDir = defineModel<string>('outputDir', { required: true })
 const mode = defineModel<string>('mode', { required: true })
-const presetId = defineModel<string>('presetId', { required: true })
-const videoFormat = defineModel<string>('videoFormat', { required: true })
-const imageFormat = defineModel<string>('imageFormat', { required: true })
-const audioFormat = defineModel<string>('audioFormat', { required: true })
-const resizeLongEdge = defineModel<number | null>('resizeLongEdge', { required: true })
 
 const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({ label: preset.label, value: preset.id })))
 const currentActivityDisabled = computed(() => !outputDir.value || (!props.activityQueueCount && (mode.value === 'gif' ? !props.gifQueueCount : !props.filesCount)))
-const mediaTargetLabel = computed(() => `${props.mediaType.charAt(0).toUpperCase()}${props.mediaType.slice(1)} target`)
-const mediaTarget = computed({
-  get() {
-    if (props.mediaType === 'image') {
-      return imageFormat.value
-    }
-
-    if (props.mediaType === 'audio') {
-      return audioFormat.value
-    }
-
-    return videoFormat.value
-  },
-  set(value: string) {
-    if (props.mediaType === 'image') {
-      imageFormat.value = value
-      return
-    }
-
-    if (props.mediaType === 'audio') {
-      audioFormat.value = value
-      return
-    }
-
-    videoFormat.value = value
-  }
-})
-const mediaTargetItems = computed(() => {
-  if (props.mediaType === 'image') {
-    return props.imageTargets
-  }
-
-  if (props.mediaType === 'audio') {
-    return props.audioTargets
-  }
-
-  return props.videoTargets
-})
 const runLabel = computed(() => {
   if (props.processing) {
     return 'Processing batch...'
@@ -182,7 +137,7 @@ function basename(path: string) {
             Configure
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            {{ mediaType }} setup
+            {{ selectedMediaKind || 'Media' }} setup
           </h2>
         </div>
         <UBadge
@@ -232,45 +187,6 @@ function basename(path: string) {
         </UButton>
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-2">
-        <UFormField label="Mode">
-          <USelect
-            v-model="mode"
-            :items="modeOptions"
-            option-attribute="label"
-            value-attribute="value"
-          />
-        </UFormField>
-
-        <UFormField label="Preset">
-          <USelect
-            v-model="presetId"
-            :items="presetItems"
-            option-attribute="label"
-            value-attribute="value"
-          />
-        </UFormField>
-
-        <UFormField :label="mediaTargetLabel">
-          <USelect
-            v-model="mediaTarget"
-            :items="mediaTargetItems"
-          />
-        </UFormField>
-
-        <UFormField
-          v-if="mode !== 'gif' && mediaType !== 'audio'"
-          label="Resize long edge"
-        >
-          <UInputNumber
-            v-model="resizeLongEdge"
-            :min="320"
-            :max="4096"
-            :step="10"
-          />
-        </UFormField>
-      </div>
-
       <div class="grid gap-3 md:grid-cols-2">
         <UButton
           block
@@ -317,18 +233,18 @@ function basename(path: string) {
       </p>
       <p
         v-if="activityQueueCount"
-        class="text-sm leading-6 text-sky-300"
+        class="text-sm leading-6 text-amber-300"
       >
         Each queued file can keep these defaults or use its own settings.
       </p>
 
       <div
         v-if="selectedJob"
-        class="space-y-4 rounded-lg border border-sky-400/25 bg-sky-400/8 p-4"
+        class="space-y-4 rounded-lg border border-amber-400/25 bg-amber-400/8 p-4"
       >
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
               Selected file settings
             </p>
             <p class="mt-2 truncate text-lg font-semibold text-white">
