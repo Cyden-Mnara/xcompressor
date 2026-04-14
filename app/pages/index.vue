@@ -219,7 +219,7 @@ const guideDictionary: Record<GuideLanguage, GuideCopy> = {
     tourDone: 'Done',
     tourSkip: 'Skip',
     themeLabel: 'Theme',
-    languageLabel: 'Guide language'
+    languageLabel: 'Language'
   },
   'sw-TZ': {
     workspaceBadge: 'Muhtasari wa kazi',
@@ -266,7 +266,144 @@ const guideDictionary: Record<GuideLanguage, GuideCopy> = {
     tourDone: 'Maliza',
     tourSkip: 'Ruka',
     themeLabel: 'Mandhari',
-    languageLabel: 'Lugha ya mwongozo'
+    languageLabel: 'Lugha'
+  }
+}
+
+const appUiDictionary = {
+  'en-US': {
+    media: { video: 'Video', image: 'Image', audio: 'Audio', unknown: 'Unknown', media: 'Media' },
+    modes: { compress: 'Compress', convert: 'Convert', gif: 'Create GIF' },
+    status: { queued: 'queued', progress: 'progress', running: 'running', completed: 'completed', success: 'success', failed: 'failed', cancelled: 'cancelled', skipped: 'skipped' },
+    toolbar: { work: 'Work', development: 'Development', note: 'One job runs at a time to keep the machine responsive.', checkUpdates: 'Check updates' },
+    drag: { title: 'Drop files to add them to the queue', body: 'Videos, images, and audio get default settings that you can edit per file.' },
+    metrics: { ram: 'RAM', cpu: 'CPU', eta: 'ETA' },
+    job: {
+      configure: 'Configure', setup: 'setup', sourceFiles: 'source files', addMedia: 'Add media', output: 'Output', clear: 'Clear',
+      outputPlaceholder: 'Choose an output directory', applyDefaults: 'Apply defaults to queue', processingBatch: 'Processing batch...',
+      runMixed: 'Run mixed activity batch', generateGif: 'Generate GIF batch', runBatch: 'Run batch', stoppingBatch: 'Stopping batch...',
+      cancelRunning: 'Cancel running batch', gifClipRequired: 'Add at least one GIF clip before running export.',
+      activityDefaults: 'Each queued file can keep these defaults or use its own settings.', selectedSettings: 'Selected file settings',
+      mode: 'Mode', preset: 'Preset', target: 'target', resizeLongEdge: 'Resize long edge', outputDirectory: 'Output directory',
+      start: 'Start', duration: 'Duration', fps: 'FPS', width: 'Width',
+      selectQueued: 'Select a queued file to adjust its mode, format, resize, or output directory.'
+    },
+    queue: {
+      title: 'Source queue', skippedGif: 'skipped in gif mode', skippedGifBody: 'This file stays in the queue, but GIF export only runs on video inputs.',
+      speed: 'Speed', remove: 'Remove', removeClip: 'Remove clip', emptyTitle: 'No media queued',
+      emptyDescription: 'Drag files here or use Add media. Each file gets default settings you can edit after selecting it.', edge: 'edge'
+    },
+    gif: {
+      title: 'GIF editor', subtitle: 'Preview and clip ranges', clipsQueued: 'clips queued', previewSource: 'Preview source',
+      previewDescription: 'Choose the video you want to clip from.', openSystem: 'Open in system player', jumpStart: 'Jump to clip start',
+      openExternal: 'Open externally', videoLength: 'Video length', loading: 'loading...', clipRange: 'Clip range', start: 'Start', end: 'End',
+      noPreviewTitle: 'No video selected for preview', noPreviewDescription: 'Add at least one video file to start building GIF clips.',
+      startSecond: 'Start second', startSecondDescription: 'Where the clip begins inside the source video.', endSecond: 'End second',
+      endSecondDescription: 'Where the clip stops inside the source video.', fpsDescription: 'Higher FPS is smoother but creates a larger file.',
+      widthLabel: 'GIF width', widthDescription: 'Output width in pixels. Smaller width exports faster.', addClip: 'Add clip to GIF queue',
+      summary: 'GIF summary', motion: 'Motion', output: 'Output', eligiblePrefix: 'Eligible video files', queuedPrefix: 'Queued GIF clips',
+      nonVideoNote: 'Non-video files stay in the media queue but cannot create GIF clips.'
+    },
+    activity: {
+      title: 'Activity batch', subtitle: 'Saved operations', queued: 'queued', clear: 'Clear', remove: 'Remove',
+      emptyTitle: 'No mixed activity batch yet', emptyDescription: 'Build a compress, convert, or GIF configuration above, then add it here as a saved activity.', edge: 'edge'
+    },
+    monitor: {
+      title: 'Run status', subtitle: 'Batch monitor', mixedFinished: 'mixed activity jobs finished.', gifFinished: 'queued GIF clips finished.',
+      jobsFinished: 'jobs finished.', cancellation: 'Cancellation requested. Active FFmpeg jobs are being stopped.'
+    },
+    output: {
+      title: 'Batch output', subtitle: 'Results', successful: 'successful', output: 'Output', args: 'ffmpeg args',
+      emptyTitle: 'No jobs have run yet', emptyDescription: 'Per-job results appear here while the workspace stays focused on setup in the center pane.'
+    },
+    updates: {
+      title: 'App updates', checking: 'Checking GitHub release channel...', unavailable: 'Update status unavailable.', ready: 'update ready',
+      current: 'current', notConfigured: 'not configured', installed: 'Installed', available: 'Available', latest: 'latest',
+      releaseDate: 'Release date', checkNow: 'Check now', install: 'Install update'
+    },
+    resource: {
+      title: 'Resource planner', checking: 'Checking available resources...', noJobs: 'No jobs selected yet.', liveCpu: 'Live CPU', liveRam: 'Live RAM',
+      plannedRam: 'Planned RAM', stopping: 'Stopping...', cancelBatch: 'Cancel batch', parallelLimited: 'parallel limited', parallelOk: 'parallel OK',
+      jobs: 'Jobs', requested: 'requested', safe: 'safe', availableRam: 'Available RAM', sequential: 'Switch to sequential mode',
+      blocked: 'Parallel execution is blocked for the current estimate.'
+    },
+    toast: {
+      filesAdded: 'Files added', noFilesAdded: 'No files added', added: 'added', skipped: 'skipped',
+      defaultsApplied: 'Defaults applied', queuedJobsNowUse: 'queued jobs now use the current settings.',
+      completedRemoved: 'Completed jobs removed', completedWasRemoved: 'completed job was removed before rerun.',
+      completedWereRemoved: 'completed jobs were removed before rerun.', noPending: 'No pending jobs',
+      everythingCompleted: 'Everything in the queue has already completed.', updateFailed: 'Update check failed',
+      updateInstalled: 'Update installed', updateReadySuffix: 'is available', upToDate: 'xcompressor is up to date',
+      updaterNotConfigured: 'Updater not configured', install: 'Install', queuedJob: 'Queued job.',
+      queuedGif: 'Queued GIF clip for batch processing.', queuedBatch: 'Queued for batch processing.', batchError: 'Batch error'
+    }
+  },
+  'sw-TZ': {
+    media: { video: 'Video', image: 'Picha', audio: 'Sauti', unknown: 'Haijulikani', media: 'Media' },
+    modes: { compress: 'Bana', convert: 'Badili', gif: 'Tengeneza GIF' },
+    status: { queued: 'kwenye foleni', progress: 'inaendelea', running: 'inafanya kazi', completed: 'imekamilika', success: 'imefanikiwa', failed: 'imeshindwa', cancelled: 'imekatishwa', skipped: 'imerukwa' },
+    toolbar: { work: 'Kazi', development: 'Maendeleo', note: 'Kazi moja huendeshwa kwa wakati mmoja ili kompyuta ibaki imara.', checkUpdates: 'Angalia masasisho' },
+    drag: { title: 'Dondosha faili ili ziongezwe kwenye foleni', body: 'Video, picha, na sauti hupata mipangilio ya kawaida ambayo unaweza kubadilisha kwa kila faili.' },
+    metrics: { ram: 'RAM', cpu: 'CPU', eta: 'ETA' },
+    job: {
+      configure: 'Sanidi', setup: 'mipangilio', sourceFiles: 'faili chanzo', addMedia: 'Ongeza media', output: 'Matokeo', clear: 'Futa',
+      outputPlaceholder: 'Chagua folda ya kuhifadhi', applyDefaults: 'Tumia mipangilio kwa foleni', processingBatch: 'Inachakata batch...',
+      runMixed: 'Endesha batch mchanganyiko', generateGif: 'Tengeneza batch ya GIF', runBatch: 'Endesha batch', stoppingBatch: 'Inasimamisha batch...',
+      cancelRunning: 'Sitisha batch inayoendelea', gifClipRequired: 'Ongeza angalau kipande kimoja cha GIF kabla ya kuendesha.',
+      activityDefaults: 'Kila faili kwenye foleni inaweza kutumia mipangilio hii au yake binafsi.', selectedSettings: 'Mipangilio ya faili iliyochaguliwa',
+      mode: 'Mode', preset: 'Preset', target: 'lengo', resizeLongEdge: 'Badili upande mrefu', outputDirectory: 'Folda ya kuhifadhi',
+      start: 'Mwanzo', duration: 'Muda', fps: 'FPS', width: 'Upana',
+      selectQueued: 'Chagua faili kwenye foleni kubadilisha mode, fomati, ukubwa, au folda ya kuhifadhi.'
+    },
+    queue: {
+      title: 'Foleni ya chanzo', skippedGif: 'itarukwa kwenye GIF mode', skippedGifBody: 'Faili hii inabaki kwenye foleni, lakini GIF hutengenezwa kwa video pekee.',
+      speed: 'Kasi', remove: 'Ondoa', removeClip: 'Ondoa kipande', emptyTitle: 'Hakuna media kwenye foleni',
+      emptyDescription: 'Dondosha faili hapa au tumia Ongeza media. Kila faili hupata mipangilio unayoweza kubadilisha baada ya kuichagua.', edge: 'upande'
+    },
+    gif: {
+      title: 'Kihariri cha GIF', subtitle: 'Hakiki na kata vipande', clipsQueued: 'vipande kwenye foleni', previewSource: 'Chanzo cha hakiki',
+      previewDescription: 'Chagua video unayotaka kukata.', openSystem: 'Fungua kwenye player ya mfumo', jumpStart: 'Ruka hadi mwanzo wa kipande',
+      openExternal: 'Fungua nje', videoLength: 'Urefu wa video', loading: 'inapakia...', clipRange: 'Kipande', start: 'Mwanzo', end: 'Mwisho',
+      noPreviewTitle: 'Hakuna video iliyochaguliwa kwa hakiki', noPreviewDescription: 'Ongeza angalau video moja kuanza kutengeneza vipande vya GIF.',
+      startSecond: 'Sekunde ya mwanzo', startSecondDescription: 'Mahali kipande kinaanza ndani ya video.', endSecond: 'Sekunde ya mwisho',
+      endSecondDescription: 'Mahali kipande kinaishia ndani ya video.', fpsDescription: 'FPS kubwa ni laini zaidi lakini huongeza ukubwa wa faili.',
+      widthLabel: 'Upana wa GIF', widthDescription: 'Upana wa matokeo kwa pikseli. Upana mdogo hutoka haraka zaidi.', addClip: 'Ongeza kipande kwenye foleni ya GIF',
+      summary: 'Muhtasari wa GIF', motion: 'Mwendo', output: 'Matokeo', eligiblePrefix: 'Faili za video zinazofaa', queuedPrefix: 'Vipande vya GIF kwenye foleni',
+      nonVideoNote: 'Faili zisizo video zinabaki kwenye foleni lakini haziwezi kutengeneza GIF.'
+    },
+    activity: {
+      title: 'Batch ya kazi', subtitle: 'Operesheni zilizohifadhiwa', queued: 'kwenye foleni', clear: 'Futa', remove: 'Ondoa',
+      emptyTitle: 'Hakuna batch mchanganyiko bado', emptyDescription: 'Tengeneza usanidi wa kubana, kubadili, au GIF hapo juu, kisha uongeze hapa kama kazi iliyohifadhiwa.', edge: 'upande'
+    },
+    monitor: {
+      title: 'Hali ya uendeshaji', subtitle: 'Monitor ya batch', mixedFinished: 'kazi mchanganyiko zimekamilika.', gifFinished: 'vipande vya GIF vimekamilika.',
+      jobsFinished: 'kazi zimekamilika.', cancellation: 'Ombi la kusitisha limetumwa. Kazi za FFmpeg zinasimamishwa.'
+    },
+    output: {
+      title: 'Matokeo ya batch', subtitle: 'Matokeo', successful: 'zimefanikiwa', output: 'Matokeo', args: 'hoja za ffmpeg',
+      emptyTitle: 'Hakuna kazi iliyoendeshwa bado', emptyDescription: 'Matokeo ya kila kazi yataonekana hapa huku eneo la kazi likibaki kwenye usanidi.'
+    },
+    updates: {
+      title: 'Masasisho ya app', checking: 'Inaangalia GitHub release channel...', unavailable: 'Hali ya sasisho haipatikani.', ready: 'sasisho lipo',
+      current: 'la sasa', notConfigured: 'haijasanidiwa', installed: 'Iliyosakinishwa', available: 'Inayopatikana', latest: 'ya karibuni',
+      releaseDate: 'Tarehe ya release', checkNow: 'Angalia sasa', install: 'Sakinisha sasisho'
+    },
+    resource: {
+      title: 'Mpangaji wa rasilimali', checking: 'Inaangalia rasilimali zilizopo...', noJobs: 'Hakuna kazi iliyochaguliwa bado.', liveCpu: 'CPU sasa', liveRam: 'RAM sasa',
+      plannedRam: 'RAM iliyopangwa', stopping: 'Inasimama...', cancelBatch: 'Sitisha batch', parallelLimited: 'parallel imezuiwa', parallelOk: 'parallel sawa',
+      jobs: 'Kazi', requested: 'zilizoombwa', safe: 'salama', availableRam: 'RAM iliyopo', sequential: 'Badili kwenda mfululizo',
+      blocked: 'Uendeshaji wa parallel umezuiwa kwa makadirio ya sasa.'
+    },
+    toast: {
+      filesAdded: 'Faili zimeongezwa', noFilesAdded: 'Hakuna faili iliyoongezwa', added: 'zimeongezwa', skipped: 'zimerukwa',
+      defaultsApplied: 'Mipangilio imetumika', queuedJobsNowUse: 'kazi kwenye foleni sasa zinatumia mipangilio ya sasa.',
+      completedRemoved: 'Kazi zilizokamilika zimeondolewa', completedWasRemoved: 'kazi iliyokamilika imeondolewa kabla ya kurudia.',
+      completedWereRemoved: 'kazi zilizokamilika zimeondolewa kabla ya kurudia.', noPending: 'Hakuna kazi inayosubiri',
+      everythingCompleted: 'Kila kitu kwenye foleni tayari kimekamilika.', updateFailed: 'Ukaguzi wa sasisho umeshindwa',
+      updateInstalled: 'Sasisho limesakinishwa', updateReadySuffix: 'linapatikana', upToDate: 'xcompressor iko toleo la sasa',
+      updaterNotConfigured: 'Updater haijasanidiwa', install: 'Sakinisha', queuedJob: 'Kazi imewekwa kwenye foleni.',
+      queuedGif: 'Kipande cha GIF kimewekwa kwenye foleni.', queuedBatch: 'Imewekwa kwenye foleni ya batch.', batchError: 'Hitilafu ya batch'
+    }
   }
 }
 
@@ -274,6 +411,11 @@ const themeOptions = [
   { label: 'System', value: 'system' },
   { label: 'Dark', value: 'dark' },
   { label: 'Light', value: 'light' }
+]
+const swThemeOptions = [
+  { label: 'Mfumo', value: 'system' },
+  { label: 'Giza', value: 'dark' },
+  { label: 'Mwanga', value: 'light' }
 ]
 const languageOptions = [
   { label: 'English (US)', value: 'en-US' },
@@ -335,12 +477,15 @@ const activeIntroPreset = computed(() =>
   bootstrap.value?.presets.find(preset => preset.id === (selectedQueueJob.value?.presetId ?? presetId.value))
 )
 const guideCopy = computed(() => guideDictionary[guideLanguage.value])
+const appUi = computed(() => appUiDictionary[guideLanguage.value])
+const localizedThemeOptions = computed(() => guideLanguage.value === 'sw-TZ' ? swThemeOptions : themeOptions)
 const activeTourStep = computed(() => guideCopy.value.tourSteps[guideTourStep.value] ?? {
   title: '',
   body: '',
   target: ''
 })
 const isLastTourStep = computed(() => guideTourStep.value >= guideCopy.value.tourSteps.length - 1)
+provide('appUi', appUi)
 const guideSpotlightStyle = computed(() => {
   const rect = guideTargetRect.value
   if (!rect) {
@@ -796,8 +941,8 @@ async function addPathsToQueue(paths: string[]) {
 
   if (newPaths.length || skippedCount) {
     toast.add({
-      title: newPaths.length ? 'Files added' : 'No files added',
-      description: `${newPaths.length} added${skippedCount ? `, ${skippedCount} skipped` : ''}.`,
+      title: newPaths.length ? appUi.value.toast.filesAdded : appUi.value.toast.noFilesAdded,
+      description: `${newPaths.length} ${appUi.value.toast.added}${skippedCount ? `, ${skippedCount} ${appUi.value.toast.skipped}` : ''}.`,
       icon: newPaths.length ? 'i-lucide-check-circle-2' : 'i-lucide-circle-alert',
       color: newPaths.length ? 'success' : 'warning',
       duration: 5000
@@ -1024,7 +1169,7 @@ function formatUpdateDate(value: string | null) {
 function showUpdateToast(status: AppUpdateStatus, failed = false) {
   const toastPayload = failed
     ? {
-        title: 'Update check failed',
+        title: appUi.value.toast.updateFailed,
         description: status.message,
         icon: 'i-lucide-circle-alert',
         color: 'error' as const,
@@ -1032,7 +1177,7 @@ function showUpdateToast(status: AppUpdateStatus, failed = false) {
       }
     : status.updateInstalled
       ? {
-          title: 'Update installed',
+          title: appUi.value.toast.updateInstalled,
           description: status.message,
           icon: 'i-lucide-check-circle-2',
           color: 'success' as const,
@@ -1040,14 +1185,14 @@ function showUpdateToast(status: AppUpdateStatus, failed = false) {
         }
       : status.updateReady
         ? {
-            title: `Version ${status.availableVersion} is available`,
+            title: `Version ${status.availableVersion} ${appUi.value.toast.updateReadySuffix}`,
             description: status.notes || status.message,
             icon: 'i-lucide-download',
             color: 'warning' as const,
             duration: 12000,
             actions: [
               {
-                label: 'Install',
+                label: appUi.value.toast.install,
                 color: 'success' as const,
                 onClick: () => {
                   void installUpdate()
@@ -1056,7 +1201,7 @@ function showUpdateToast(status: AppUpdateStatus, failed = false) {
             ]
           }
         : {
-            title: status.configured ? 'xcompressor is up to date' : 'Updater not configured',
+            title: status.configured ? appUi.value.toast.upToDate : appUi.value.toast.updaterNotConfigured,
             description: status.message,
             icon: status.configured ? 'i-lucide-badge-check' : 'i-lucide-info',
             color: status.configured ? 'success' as const : 'neutral' as const,
@@ -1286,8 +1431,8 @@ function addCurrentActivity() {
       }
     })
     toast.add({
-      title: 'Defaults applied',
-      description: `${activityQueue.value.length} queued jobs now use the current settings.`,
+      title: appUi.value.toast.defaultsApplied,
+      description: `${activityQueue.value.length} ${appUi.value.toast.queuedJobsNowUse}`,
       icon: 'i-lucide-check-circle-2',
       color: 'success',
       duration: 5000
@@ -1413,8 +1558,8 @@ async function runBatch() {
 
   if (prunedCount) {
     toast.add({
-      title: 'Completed jobs removed',
-      description: `${prunedCount} completed ${prunedCount === 1 ? 'job was' : 'jobs were'} removed before rerun.`,
+      title: appUi.value.toast.completedRemoved,
+      description: `${prunedCount} ${prunedCount === 1 ? appUi.value.toast.completedWasRemoved : appUi.value.toast.completedWereRemoved}`,
       icon: 'i-lucide-list-checks',
       color: 'success',
       duration: 5000
@@ -1424,8 +1569,8 @@ async function runBatch() {
   if (!pendingQueueCount(hadActivityQueue)) {
     clearCurrentRunState()
     toast.add({
-      title: 'No pending jobs',
-      description: 'Everything in the queue has already completed.',
+      title: appUi.value.toast.noPending,
+      description: appUi.value.toast.everythingCompleted,
       icon: 'i-lucide-circle-check',
       color: 'neutral',
       duration: 5000
@@ -1452,7 +1597,7 @@ async function runBatch() {
           status: 'queued',
           progressPercent: 0,
           outputPath: null,
-          message: `Queued ${job.mode} job.`,
+          message: `${appUi.value.toast.queuedJob}`,
           speed: null
         } satisfies QueueProgress])
       )
@@ -1466,7 +1611,7 @@ async function runBatch() {
             status: 'queued',
             progressPercent: 0,
             outputPath: null,
-            message: 'Queued GIF clip for batch processing.',
+            message: appUi.value.toast.queuedGif,
             speed: null
           } satisfies QueueProgress])
         )
@@ -1479,7 +1624,7 @@ async function runBatch() {
             status: 'queued',
             progressPercent: 0,
             outputPath: null,
-            message: 'Queued for batch processing.',
+            message: appUi.value.toast.queuedBatch,
             speed: null
           } satisfies QueueProgress])
         )
@@ -1515,7 +1660,7 @@ async function runBatch() {
     markActiveJobsFailed(message)
     results.value = [{
       jobId: 'batch-error',
-      label: 'Batch error',
+      label: appUi.value.toast.batchError,
       inputPath: 'batch',
       mediaKind: 'system',
       operation: mode.value,
@@ -1684,10 +1829,10 @@ function onGifVideoError() {
     >
       <div class="rounded-lg border border-amber-300/40 bg-stone-950 p-6 text-center shadow-2xl">
         <p class="text-xl font-semibold text-white">
-          Drop files to add them to the queue
+          {{ appUi.drag.title }}
         </p>
         <p class="mt-2 text-sm text-stone-300">
-          Videos, images, and audio get default settings that you can edit per file.
+          {{ appUi.drag.body }}
         </p>
       </div>
     </div>
@@ -1770,7 +1915,7 @@ function onGifVideoError() {
             icon="i-lucide-layout-dashboard"
             @click="activeWorkspace = 'work'"
           >
-            Work
+            {{ appUi.toolbar.work }}
           </UButton>
           <UButton
             :color="activeWorkspace === 'development' ? 'primary' : 'neutral'"
@@ -1778,11 +1923,11 @@ function onGifVideoError() {
             icon="i-lucide-terminal"
             @click="activeWorkspace = 'development'"
           >
-            Development
+            {{ appUi.toolbar.development }}
           </UButton>
         </div>
         <p class="text-sm text-stone-400">
-          One job runs at a time to keep the machine responsive.
+          {{ appUi.toolbar.note }}
         </p>
         <UButton
           icon="i-lucide-refresh-cw"
@@ -1792,13 +1937,13 @@ function onGifVideoError() {
           :loading="updateLoading"
           @click="checkForUpdates"
         >
-          Check updates
+          {{ appUi.toolbar.checkUpdates }}
         </UButton>
         <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
           <span>{{ guideCopy.themeLabel }}</span>
           <USelect
             v-model="colorMode.preference"
-            :items="themeOptions"
+            :items="localizedThemeOptions"
             size="sm"
             class="w-32"
             :aria-label="guideCopy.themeLabel"
@@ -1827,13 +1972,13 @@ function onGifVideoError() {
           :loading="updateLoading"
           @click="checkForUpdates"
         >
-          Check updates
+          {{ appUi.toolbar.checkUpdates }}
         </UButton>
         <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
           <span>{{ guideCopy.themeLabel }}</span>
           <USelect
             v-model="colorMode.preference"
-            :items="themeOptions"
+            :items="localizedThemeOptions"
             size="sm"
             class="w-32"
             :aria-label="guideCopy.themeLabel"
@@ -1929,7 +2074,7 @@ function onGifVideoError() {
             <div class="grid grid-cols-3 gap-2 text-center">
               <div class="rounded-lg bg-white/5 p-2">
                 <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                  RAM
+                  {{ appUi.metrics.ram }}
                 </p>
                 <p class="mt-1 text-lg font-semibold text-white">
                   {{ ramUsedPercent === null || ramUsedPercent === undefined ? 'n/a' : `${ramUsedPercent}%` }}
@@ -1937,7 +2082,7 @@ function onGifVideoError() {
               </div>
               <div class="rounded-lg bg-white/5 p-2">
                 <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                  CPU
+                  {{ appUi.metrics.cpu }}
                 </p>
                 <p class="mt-1 text-lg font-semibold text-white">
                   {{ cpuUsedPercent === null || cpuUsedPercent === undefined ? 'n/a' : `${cpuUsedPercent}%` }}
@@ -1945,7 +2090,7 @@ function onGifVideoError() {
               </div>
               <div class="rounded-lg bg-white/5 p-2">
                 <p class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                  ETA
+                  {{ appUi.metrics.eta }}
                 </p>
                 <p class="mt-1 text-lg font-semibold text-white">
                   {{ estimatedMinutesLabel }}

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 defineProps<{
   overallProgress: number
   activityQueueCount: number
@@ -8,6 +10,9 @@ defineProps<{
   mode: string
   cancelPending: boolean
 }>()
+
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 </script>
 
 <template>
@@ -16,10 +21,10 @@ defineProps<{
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Run status
+            {{ ui.monitor.title }}
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            Batch monitor
+            {{ ui.monitor.subtitle }}
           </h2>
         </div>
         <p class="text-2xl font-semibold text-white">
@@ -31,19 +36,19 @@ defineProps<{
     <div class="space-y-4">
       <p class="text-sm leading-6 text-stone-300">
         <span v-if="activityQueueCount">
-          {{ completedJobs }}/{{ activityQueueCount || 0 }} mixed activity jobs finished.
+          {{ completedJobs }}/{{ activityQueueCount || 0 }} {{ ui.monitor.mixedFinished }}
         </span>
         <span v-else-if="mode === 'gif'">
-          {{ completedJobs }}/{{ gifQueueCount || 0 }} queued GIF clips finished.
+          {{ completedJobs }}/{{ gifQueueCount || 0 }} {{ ui.monitor.gifFinished }}
         </span>
         <span v-else>
-          {{ completedJobs }}/{{ filesCount || 0 }} jobs finished.
+          {{ completedJobs }}/{{ filesCount || 0 }} {{ ui.monitor.jobsFinished }}
         </span>
         <span
           v-if="cancelPending"
           class="text-amber-300"
         >
-          Cancellation requested. Active FFmpeg jobs are being stopped.
+          {{ ui.monitor.cancellation }}
         </span>
       </p>
 

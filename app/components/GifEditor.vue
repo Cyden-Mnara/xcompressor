@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type GifOptions = {
   startSeconds: number
   durationSeconds: number
@@ -34,6 +36,8 @@ const emit = defineEmits<{
 const gifOptions = defineModel<GifOptions>('gifOptions', { required: true })
 const gifEndSeconds = defineModel<number>('gifEndSeconds', { required: true })
 const selectedGifVideoModel = defineModel<string>('selectedGifVideo', { required: true })
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -49,16 +53,16 @@ function basename(path: string) {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
-            GIF editor
+            {{ ui.gif.title }}
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            Preview and clip ranges
+            {{ ui.gif.subtitle }}
           </h2>
         </div>
         <UBadge
           color="warning"
           variant="soft"
-          :label="gifQueueCount + ' clips queued'"
+          :label="`${gifQueueCount} ${ui.gif.clipsQueued}`"
         />
       </div>
     </template>
@@ -66,8 +70,8 @@ function basename(path: string) {
     <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div class="min-w-0 space-y-4 overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4">
         <UFormField
-          label="Preview source"
-          description="Choose the video you want to clip from."
+          :label="ui.gif.previewSource"
+          :description="ui.gif.previewDescription"
         >
           <USelect
             v-model="selectedGifVideoModel"
@@ -109,7 +113,7 @@ function basename(path: string) {
               icon="i-lucide-external-link"
               @click="emit('openExternal')"
             >
-              Open in system player
+              {{ ui.gif.openSystem }}
             </UButton>
           </div>
           <div class="flex flex-wrap items-center gap-3">
@@ -120,7 +124,7 @@ function basename(path: string) {
               :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
               @click="emit('jumpToClipStart')"
             >
-              Jump to clip start
+              {{ ui.gif.jumpStart }}
             </UButton>
             <UButton
               color="neutral"
@@ -128,17 +132,17 @@ function basename(path: string) {
               icon="i-lucide-monitor-play"
               @click="emit('openExternal')"
             >
-              Open externally
+              {{ ui.gif.openExternal }}
             </UButton>
             <p class="text-xs leading-6 text-stone-400">
-              Video length: {{ selectedGifVideoDuration ? `${selectedGifVideoDuration.toFixed(1)}s` : 'loading...' }}
+              {{ ui.gif.videoLength }}: {{ selectedGifVideoDuration ? `${selectedGifVideoDuration.toFixed(1)}s` : ui.gif.loading }}
             </p>
           </div>
 
           <div class="rounded-lg border border-white/10 bg-white/5 p-4">
             <div class="mb-3 flex items-center justify-between gap-3">
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-                Clip range
+                {{ ui.gif.clipRange }}
               </p>
               <p class="text-sm font-medium text-white">
                 {{ gifClipRangeLabel }}
@@ -147,7 +151,7 @@ function basename(path: string) {
             <div class="space-y-4">
               <div>
                 <div class="mb-2 flex items-center justify-between text-xs text-stone-400">
-                  <span>Start</span>
+                  <span>{{ ui.gif.start }}</span>
                   <span>{{ gifOptions.startSeconds.toFixed(1) }}s</span>
                 </div>
                 <input
@@ -162,7 +166,7 @@ function basename(path: string) {
               </div>
               <div>
                 <div class="mb-2 flex items-center justify-between text-xs text-stone-400">
-                  <span>End</span>
+                  <span>{{ ui.gif.end }}</span>
                   <span>{{ gifEndSeconds.toFixed(1) }}s</span>
                 </div>
                 <input
@@ -182,8 +186,8 @@ function basename(path: string) {
         <UEmptyState
           v-else
           icon="i-lucide-film"
-          title="No video selected for preview"
-          description="Add at least one video file to start building GIF clips."
+          :title="ui.gif.noPreviewTitle"
+          :description="ui.gif.noPreviewDescription"
         />
       </div>
 
@@ -191,8 +195,8 @@ function basename(path: string) {
         <div class="rounded-lg border border-white/10 bg-black/20 p-4">
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
             <UFormField
-              label="Start second"
-              description="Where the clip begins inside the source video."
+              :label="ui.gif.startSecond"
+              :description="ui.gif.startSecondDescription"
             >
               <UInputNumber
                 v-model="gifOptions.startSeconds"
@@ -201,8 +205,8 @@ function basename(path: string) {
               />
             </UFormField>
             <UFormField
-              label="End second"
-              description="Where the clip stops inside the source video."
+              :label="ui.gif.endSecond"
+              :description="ui.gif.endSecondDescription"
             >
               <UInputNumber
                 v-model="gifEndSeconds"
@@ -212,7 +216,7 @@ function basename(path: string) {
             </UFormField>
             <UFormField
               label="GIF FPS"
-              description="Higher FPS is smoother but creates a larger file."
+              :description="ui.gif.fpsDescription"
             >
               <UInputNumber
                 v-model="gifOptions.fps"
@@ -221,8 +225,8 @@ function basename(path: string) {
               />
             </UFormField>
             <UFormField
-              label="GIF width"
-              description="Output width in pixels. Smaller width exports faster."
+              :label="ui.gif.widthLabel"
+              :description="ui.gif.widthDescription"
             >
               <UInputNumber
                 v-model="gifOptions.width"
@@ -241,18 +245,18 @@ function basename(path: string) {
             :disabled="!selectedGifVideoModel"
             @click="emit('addGifSegment')"
           >
-            Add clip to GIF queue
+            {{ ui.gif.addClip }}
           </UButton>
         </div>
 
         <div class="rounded-lg border border-white/10 bg-black/20 p-4">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">
-            GIF summary
+            {{ ui.gif.summary }}
           </p>
           <div class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
             <div>
               <p class="text-xs text-stone-500">
-                Clip range
+                {{ ui.gif.clipRange }}
               </p>
               <p class="text-sm font-medium text-white">
                 {{ gifClipRangeLabel }}
@@ -260,7 +264,7 @@ function basename(path: string) {
             </div>
             <div>
               <p class="text-xs text-stone-500">
-                Motion
+                {{ ui.gif.motion }}
               </p>
               <p class="text-sm font-medium text-white">
                 {{ gifOptions.fps }} fps
@@ -268,7 +272,7 @@ function basename(path: string) {
             </div>
             <div>
               <p class="text-xs text-stone-500">
-                Output
+                {{ ui.gif.output }}
               </p>
               <p class="text-sm font-medium text-white">
                 {{ gifOptions.width }}px wide `.gif`
@@ -276,7 +280,7 @@ function basename(path: string) {
             </div>
           </div>
           <p class="mt-3 text-sm leading-6 text-stone-300">
-            Eligible video files: {{ videoFilesCount }}. Queued GIF clips: {{ gifQueueCount }}<span v-if="nonVideoFilesCount">. Non-video files stay in the media queue but cannot create GIF clips.</span>
+            {{ ui.gif.eligiblePrefix }}: {{ videoFilesCount }}. {{ ui.gif.queuedPrefix }}: {{ gifQueueCount }}<span v-if="nonVideoFilesCount">. {{ ui.gif.nonVideoNote }}</span>
           </p>
         </div>
       </div>

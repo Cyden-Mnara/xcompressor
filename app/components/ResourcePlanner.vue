@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type ResourceJobEstimate = {
   jobId: string
 }
@@ -34,6 +36,8 @@ const emit = defineEmits<{
   cancelBatch: []
   enableSequentialMode: []
 }>()
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 </script>
 
 <template>
@@ -41,10 +45,10 @@ const emit = defineEmits<{
     <template #header>
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-sky-300">
-          Resource planner
+          {{ ui.resource.title }}
         </p>
         <p class="mt-2 text-sm leading-6 text-stone-300">
-          {{ resourcePlanLoading ? 'Checking available resources...' : (resourcePlan?.summary || 'No jobs selected yet.') }}
+          {{ resourcePlanLoading ? ui.resource.checking : (resourcePlan?.summary || ui.resource.noJobs) }}
         </p>
       </div>
     </template>
@@ -53,7 +57,7 @@ const emit = defineEmits<{
       <div class="grid grid-cols-2 gap-3">
         <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
           <p class="text-xs text-stone-500">
-            Live CPU
+            {{ ui.resource.liveCpu }}
           </p>
           <p class="mt-1 text-lg font-semibold text-white">
             {{ liveSystemMetrics ? `${Math.round(liveSystemMetrics.cpuUsagePercent)}%` : 'n/a' }}
@@ -61,7 +65,7 @@ const emit = defineEmits<{
         </div>
         <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
           <p class="text-xs text-stone-500">
-            Live RAM
+            {{ ui.resource.liveRam }}
           </p>
           <p class="mt-1 text-lg font-semibold text-white">
             {{ liveSystemMetrics ? `${liveSystemMetrics.usedMemoryMb} MB` : 'n/a' }}
@@ -69,7 +73,7 @@ const emit = defineEmits<{
         </div>
         <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
           <p class="text-xs text-stone-500">
-            Planned RAM
+            {{ ui.resource.plannedRam }}
           </p>
           <p class="mt-1 text-lg font-semibold text-white">
             {{ resourcePlan?.estimatedParallelMemoryMb ? `${resourcePlan.estimatedParallelMemoryMb} MB` : 'n/a' }}
@@ -94,18 +98,18 @@ const emit = defineEmits<{
           :loading="cancelPending"
           @click="emit('cancelBatch')"
         >
-          {{ cancelPending ? 'Stopping...' : 'Cancel batch' }}
+          {{ cancelPending ? ui.resource.stopping : ui.resource.cancelBatch }}
         </UButton>
         <UBadge
           :color="resourcePlan?.canRunInParallel === false ? 'warning' : 'success'"
           variant="soft"
-          :label="resourcePlan?.canRunInParallel === false ? 'parallel limited' : 'parallel OK'"
+          :label="resourcePlan?.canRunInParallel === false ? ui.resource.parallelLimited : ui.resource.parallelOk"
         />
         <p class="text-xs leading-6 text-stone-400">
-          Jobs {{ resourcePlan?.jobs.length ?? runQueueCount }} • requested {{ effectiveParallelJobs }} • safe {{ resourcePlan?.safeParallelJobs ?? 1 }}
+          {{ ui.resource.jobs }} {{ resourcePlan?.jobs.length ?? runQueueCount }} • {{ ui.resource.requested }} {{ effectiveParallelJobs }} • {{ ui.resource.safe }} {{ resourcePlan?.safeParallelJobs ?? 1 }}
         </p>
         <p class="text-xs leading-6 text-stone-400">
-          Available RAM {{ liveSystemMetrics ? `${liveSystemMetrics.availableMemoryMb} MB` : 'n/a' }}
+          {{ ui.resource.availableRam }} {{ liveSystemMetrics ? `${liveSystemMetrics.availableMemoryMb} MB` : 'n/a' }}
         </p>
       </div>
 
@@ -117,14 +121,14 @@ const emit = defineEmits<{
         icon="i-lucide-git-commit-horizontal"
         @click="emit('enableSequentialMode')"
       >
-        Switch to sequential mode
+        {{ ui.resource.sequential }}
       </UButton>
 
       <p
         v-if="resourcePlan?.shouldUseSequential && effectiveParallelJobs > 1"
         class="text-sm leading-6 text-amber-300"
       >
-        Parallel execution is blocked for the current estimate.
+        {{ ui.resource.blocked }}
       </p>
     </div>
   </UCard>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type BatchJobResult = {
   jobId: string
   label: string | null
@@ -15,6 +17,8 @@ type BatchJobResult = {
 defineProps<{
   results: BatchJobResult[]
 }>()
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -27,17 +31,17 @@ function basename(path: string) {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Batch output
+            {{ ui.output.title }}
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            Results
+            {{ ui.output.subtitle }}
           </h2>
         </div>
         <UBadge
           v-if="results.length"
           color="primary"
           variant="soft"
-          :label="results.filter(result => result.success).length + ' successful'"
+          :label="`${results.filter(result => result.success).length} ${ui.output.successful}`"
         />
       </div>
     </template>
@@ -56,12 +60,12 @@ function basename(path: string) {
           <UBadge
             :color="result.success ? 'success' : (result.cancelled || result.skipped ? 'warning' : 'error')"
             variant="soft"
-            :label="result.success ? 'success' : (result.cancelled ? 'cancelled' : (result.skipped ? 'skipped' : 'failed'))"
+            :label="result.success ? ui.status.success : (result.cancelled ? ui.status.cancelled : (result.skipped ? ui.status.skipped : ui.status.failed))"
           />
           <UBadge
             color="neutral"
             variant="soft"
-            :label="result.mediaKind"
+            :label="ui.media[result.mediaKind] ?? result.mediaKind"
           />
           <p class="text-sm font-medium text-white">
             {{ result.label || basename(result.inputPath) }}
@@ -76,7 +80,7 @@ function basename(path: string) {
           v-if="result.outputPath"
           class="mt-2 truncate text-xs text-stone-400"
         >
-          Output: {{ basename(result.outputPath) }}
+          {{ ui.output.output }}: {{ basename(result.outputPath) }}
         </p>
 
         <details
@@ -84,7 +88,7 @@ function basename(path: string) {
           class="mt-2"
         >
           <summary class="cursor-pointer text-xs font-medium uppercase tracking-[0.2em] text-stone-400">
-            ffmpeg args
+            {{ ui.output.args }}
           </summary>
           <pre class="mt-3 overflow-x-auto rounded-xl bg-black/40 p-3 text-xs text-stone-300">{{ result.ffmpegArgs.join(' ') }}</pre>
         </details>
@@ -94,8 +98,8 @@ function basename(path: string) {
     <UEmptyState
       v-else
       icon="i-lucide-badge-check"
-      title="No jobs have run yet"
-      description="Per-job results appear here while the workspace stays focused on setup in the center pane."
+      :title="ui.output.emptyTitle"
+      :description="ui.output.emptyDescription"
     />
   </UCard>
 </template>

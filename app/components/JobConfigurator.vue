@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type BootstrapPreset = {
   id: string
   label: string
@@ -56,31 +58,33 @@ const emit = defineEmits<{
 
 const outputDir = defineModel<string>('outputDir', { required: true })
 const mode = defineModel<string>('mode', { required: true })
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({ label: preset.label, value: preset.id })))
 const currentActivityDisabled = computed(() => !outputDir.value || (!props.activityQueueCount && (mode.value === 'gif' ? !props.gifQueueCount : !props.filesCount)))
 const runLabel = computed(() => {
   if (props.processing) {
-    return 'Processing batch...'
+    return appUi.value.job.processingBatch
   }
 
   if (props.activityQueueCount) {
-    return 'Run mixed activity batch'
+    return appUi.value.job.runMixed
   }
 
-  return mode.value === 'gif' ? 'Generate GIF batch' : 'Run batch'
+  return mode.value === 'gif' ? appUi.value.job.generateGif : appUi.value.job.runBatch
 })
 const selectedModeOptions = computed(() => props.selectedMediaKind === 'video'
   ? [
-      { label: 'Compress', value: 'compress' },
-      { label: 'Convert', value: 'convert' },
-      { label: 'Create GIF', value: 'gif' }
+      { label: appUi.value.modes.compress, value: 'compress' },
+      { label: appUi.value.modes.convert, value: 'convert' },
+      { label: appUi.value.modes.gif, value: 'gif' }
     ]
   : [
-      { label: 'Compress', value: 'compress' },
-      { label: 'Convert', value: 'convert' }
+      { label: appUi.value.modes.compress, value: 'compress' },
+      { label: appUi.value.modes.convert, value: 'convert' }
     ])
-const selectedTargetLabel = computed(() => `${props.selectedMediaKind.charAt(0).toUpperCase()}${props.selectedMediaKind.slice(1)} target`)
+const selectedTargetLabel = computed(() => `${appUi.value.media[props.selectedMediaKind] ?? appUi.value.media.media} ${appUi.value.job.target}`)
 const selectedTargetItems = computed(() => {
   if (props.selectedMediaKind === 'image') {
     return props.imageTargets
@@ -134,16 +138,16 @@ function basename(path: string) {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Configure
+            {{ ui.job.configure }}
           </p>
           <h2 class="mt-2 text-2xl font-semibold text-white">
-            {{ selectedMediaKind || 'Media' }} setup
+            {{ ui.media[selectedMediaKind] || ui.media.media }} {{ ui.job.setup }}
           </h2>
         </div>
         <UBadge
           color="primary"
           variant="soft"
-          :label="filesCount + ' source files'"
+          :label="`${filesCount} ${ui.job.sourceFiles}`"
         />
       </div>
     </template>
@@ -157,13 +161,13 @@ function basename(path: string) {
           class="justify-center"
           @click="emit('pickFiles')"
         >
-          Add media
+          {{ ui.job.addMedia }}
         </UButton>
         <UInput
           v-model="outputDir"
           icon="i-lucide-folder-open"
           size="lg"
-          placeholder="Choose an output directory"
+          :placeholder="ui.job.outputPlaceholder"
         />
         <UButton
           icon="i-lucide-folder-output"
@@ -173,7 +177,7 @@ function basename(path: string) {
           class="justify-center"
           @click="emit('pickOutputDir')"
         >
-          Output
+          {{ ui.job.output }}
         </UButton>
         <UButton
           icon="i-lucide-trash-2"
@@ -183,7 +187,7 @@ function basename(path: string) {
           class="justify-center"
           @click="emit('clearQueue')"
         >
-          Clear
+          {{ ui.job.clear }}
         </UButton>
       </div>
 
@@ -197,7 +201,7 @@ function basename(path: string) {
           :disabled="currentActivityDisabled"
           @click="emit('addCurrentActivity')"
         >
-          Apply defaults to queue
+          {{ ui.job.applyDefaults }}
         </UButton>
         <UButton
           block
@@ -222,20 +226,20 @@ function basename(path: string) {
         :loading="cancelPending"
         @click="emit('cancelBatch')"
       >
-        {{ cancelPending ? 'Stopping batch...' : 'Cancel running batch' }}
+        {{ cancelPending ? ui.job.stoppingBatch : ui.job.cancelRunning }}
       </UButton>
 
       <p
         v-if="mode === 'gif' && !gifQueueCount"
         class="text-sm leading-6 text-amber-300"
       >
-        Add at least one GIF clip before running export.
+        {{ ui.job.gifClipRequired }}
       </p>
       <p
         v-if="activityQueueCount"
         class="text-sm leading-6 text-amber-300"
       >
-        Each queued file can keep these defaults or use its own settings.
+        {{ ui.job.activityDefaults }}
       </p>
 
       <div
@@ -245,7 +249,7 @@ function basename(path: string) {
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
-              Selected file settings
+              {{ ui.job.selectedSettings }}
             </p>
             <p class="mt-2 truncate text-lg font-semibold text-white">
               {{ basename(selectedJob.inputPath) }}
@@ -262,7 +266,7 @@ function basename(path: string) {
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
-          <UFormField label="Mode">
+          <UFormField :label="ui.job.mode">
             <USelect
               :model-value="selectedJob.mode"
               :items="selectedModeOptions"
@@ -272,7 +276,7 @@ function basename(path: string) {
             />
           </UFormField>
 
-          <UFormField label="Preset">
+          <UFormField :label="ui.job.preset">
             <USelect
               :model-value="selectedJob.presetId"
               :items="presetItems"
@@ -291,7 +295,7 @@ function basename(path: string) {
 
           <UFormField
             v-if="selectedJob.mode !== 'gif' && selectedMediaKind !== 'audio'"
-            label="Resize long edge"
+            :label="ui.job.resizeLongEdge"
           >
             <UInputNumber
               :model-value="selectedJob.resizeLongEdge"
@@ -302,11 +306,11 @@ function basename(path: string) {
             />
           </UFormField>
 
-          <UFormField label="Output directory">
+          <UFormField :label="ui.job.outputDirectory">
             <UInput
               :model-value="selectedJob.outputDir"
               icon="i-lucide-folder-open"
-              placeholder="Choose an output directory"
+              :placeholder="ui.job.outputPlaceholder"
               @update:model-value="emit('updateSelectedJob', { outputDir: String($event) })"
             />
           </UFormField>
@@ -316,7 +320,7 @@ function basename(path: string) {
           v-if="selectedJob.mode === 'gif' && selectedJob.gif"
           class="grid gap-4 lg:grid-cols-4"
         >
-          <UFormField label="Start">
+          <UFormField :label="ui.job.start">
             <UInputNumber
               :model-value="selectedJob.gif.startSeconds"
               :min="0"
@@ -324,7 +328,7 @@ function basename(path: string) {
               @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, startSeconds: Number($event) } })"
             />
           </UFormField>
-          <UFormField label="Duration">
+          <UFormField :label="ui.job.duration">
             <UInputNumber
               :model-value="selectedJob.gif.durationSeconds"
               :min="0.5"
@@ -332,7 +336,7 @@ function basename(path: string) {
               @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, durationSeconds: Number($event) } })"
             />
           </UFormField>
-          <UFormField label="FPS">
+          <UFormField :label="ui.job.fps">
             <UInputNumber
               :model-value="selectedJob.gif.fps"
               :min="1"
@@ -340,7 +344,7 @@ function basename(path: string) {
               @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, fps: Number($event) } })"
             />
           </UFormField>
-          <UFormField label="Width">
+          <UFormField :label="ui.job.width">
             <UInputNumber
               :model-value="selectedJob.gif.width"
               :min="160"
@@ -355,7 +359,7 @@ function basename(path: string) {
         v-else-if="activityQueueCount"
         class="rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-6 text-stone-300"
       >
-        Select a queued file to adjust its mode, format, resize, or output directory.
+        {{ ui.job.selectQueued }}
       </div>
     </div>
   </UCard>

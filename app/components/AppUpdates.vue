@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type AppUpdateStatus = {
   configured: boolean
   currentVersion: string
@@ -25,6 +27,8 @@ const emit = defineEmits<{
   checkForUpdates: []
   installUpdate: []
 }>()
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 </script>
 
 <template>
@@ -33,17 +37,17 @@ const emit = defineEmits<{
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
-            App updates
+            {{ ui.updates.title }}
           </p>
           <p class="mt-2 text-sm leading-6 text-stone-300">
-            {{ updateLoading ? 'Checking GitHub release channel...' : (updateStatus?.message || 'Update status unavailable.') }}
+            {{ updateLoading ? ui.updates.checking : (updateStatus?.message || ui.updates.unavailable) }}
           </p>
         </div>
         <UBadge
           v-if="updateStatus"
           :color="updateStatus.updateReady ? 'warning' : (updateStatus.configured ? 'success' : 'neutral')"
           variant="soft"
-          :label="updateStatus.updateReady ? 'update ready' : (updateStatus.configured ? 'current' : 'not configured')"
+          :label="updateStatus.updateReady ? ui.updates.ready : (updateStatus.configured ? ui.updates.current : ui.updates.notConfigured)"
         />
       </div>
     </template>
@@ -52,7 +56,7 @@ const emit = defineEmits<{
       <div class="grid grid-cols-2 gap-3">
         <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
           <p class="text-xs text-stone-500">
-            Installed
+            {{ ui.updates.installed }}
           </p>
           <p class="mt-1 text-lg font-semibold text-white">
             {{ updateStatus?.currentVersion || bootstrap?.version || 'n/a' }}
@@ -60,10 +64,10 @@ const emit = defineEmits<{
         </div>
         <div class="rounded-2xl border border-white/8 bg-black/20 p-3">
           <p class="text-xs text-stone-500">
-            Available
+            {{ ui.updates.available }}
           </p>
           <p class="mt-1 text-lg font-semibold text-white">
-            {{ updateStatus?.availableVersion || 'latest' }}
+            {{ updateStatus?.availableVersion || ui.updates.latest }}
           </p>
         </div>
       </div>
@@ -72,7 +76,7 @@ const emit = defineEmits<{
         v-if="updateStatus?.pubDate"
         class="text-xs leading-6 text-stone-400"
       >
-        Release date: {{ formatUpdateDate(updateStatus.pubDate) }}
+        {{ ui.updates.releaseDate }}: {{ formatUpdateDate(updateStatus.pubDate) }}
       </p>
       <p
         v-if="updateStatus?.notes"
@@ -89,7 +93,7 @@ const emit = defineEmits<{
           :loading="updateLoading"
           @click="emit('checkForUpdates')"
         >
-          Check now
+          {{ ui.updates.checkNow }}
         </UButton>
         <UButton
           v-if="updateStatus?.updateReady"
@@ -98,7 +102,7 @@ const emit = defineEmits<{
           :loading="updateInstalling"
           @click="emit('installUpdate')"
         >
-          Install update
+          {{ ui.updates.install }}
         </UButton>
       </div>
     </div>

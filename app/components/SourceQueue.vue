@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type QueueProgress = {
   status: string
   progressPercent: number
@@ -50,6 +52,8 @@ const emit = defineEmits<{
   removeActivityJob: [jobId: string]
   selectActivityJob: [jobId: string]
 }>()
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 const visibleItems = computed<QueueItem[]>(() => {
   if (props.activityQueue.length) {
@@ -120,8 +124,8 @@ function describeMixedJob(job: MixedJob) {
     : kind === 'image'
       ? job.imageFormat
       : job.audioFormat
-  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px edge` : ''
-  return `${job.mode} -> ${target}${resize}`
+  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px ${appUi.value.queue.edge}` : ''
+  return `${appUi.value.modes[job.mode] ?? job.mode} -> ${target}${resize}`
 }
 
 function removeItem(item: QueueItem) {
@@ -161,7 +165,7 @@ function statusColor(status: string | undefined) {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Source queue
+            {{ ui.queue.title }}
           </p>
         </div>
       </div>
@@ -188,25 +192,25 @@ function statusColor(status: string | undefined) {
           <UBadge
             color="neutral"
             variant="soft"
-            :label="detectKind(itemInputPath(item))"
+            :label="ui.media[detectKind(itemInputPath(item))] ?? detectKind(itemInputPath(item))"
           />
           <UBadge
             v-if="isMixedJob(item)"
             color="primary"
             variant="soft"
-            :label="item.mode"
+            :label="ui.modes[item.mode] ?? item.mode"
           />
           <UBadge
             v-if="mode === 'gif' && typeof item === 'string' && detectKind(item) !== 'video'"
             color="warning"
             variant="soft"
-            label="skipped in gif mode"
+            :label="ui.queue.skippedGif"
           />
           <UBadge
             v-if="queueItemProgress(item)"
             :color="statusColor(queueItemProgress(item)?.status)"
             variant="soft"
-            :label="queueItemProgress(item)?.status || 'queued'"
+            :label="ui.status[queueItemProgress(item)?.status || 'queued'] ?? queueItemProgress(item)?.status ?? ui.status.queued"
           />
         </div>
         <p class="truncate text-xs text-stone-500">
@@ -242,14 +246,14 @@ function statusColor(status: string | undefined) {
             v-if="queueItemProgress(item)?.speed"
             class="text-xs text-stone-500"
           >
-            Speed: {{ queueItemProgress(item)?.speed }}
+            {{ ui.queue.speed }}: {{ queueItemProgress(item)?.speed }}
           </p>
         </div>
         <p
           v-else-if="mode === 'gif' && typeof item === 'string' && detectKind(item) !== 'video'"
           class="text-xs text-amber-300"
         >
-          This file stays in the queue, but GIF export only runs on video inputs.
+          {{ ui.queue.skippedGifBody }}
         </p>
         <div class="flex justify-end">
           <UButton
@@ -258,7 +262,7 @@ function statusColor(status: string | undefined) {
             variant="ghost"
             @click.stop="removeItem(item)"
           >
-            {{ mode === 'gif' && typeof item !== 'string' && !isMixedJob(item) ? 'Remove clip' : 'Remove' }}
+            {{ mode === 'gif' && typeof item !== 'string' && !isMixedJob(item) ? ui.queue.removeClip : ui.queue.remove }}
           </UButton>
         </div>
       </div>
@@ -267,8 +271,8 @@ function statusColor(status: string | undefined) {
     <UEmptyState
       v-else
       icon="i-lucide-clapperboard"
-      title="No media queued"
-      description="Drag files here or use Add media. Each file gets default settings you can edit after selecting it."
+      :title="ui.queue.emptyTitle"
+      :description="ui.queue.emptyDescription"
     />
   </UCard>
 </template>

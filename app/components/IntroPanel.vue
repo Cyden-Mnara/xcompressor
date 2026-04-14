@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type BootstrapPreset = {
   id: string
   label: string
@@ -42,13 +44,15 @@ const props = defineProps<{
 }>()
 
 const mediaTypes = [
-  { label: 'Video', value: 'video', icon: 'i-lucide-video' },
-  { label: 'Image', value: 'image', icon: 'i-lucide-image' },
-  { label: 'Audio', value: 'audio', icon: 'i-lucide-music' }
+  { value: 'video', icon: 'i-lucide-video' },
+  { value: 'image', icon: 'i-lucide-image' },
+  { value: 'audio', icon: 'i-lucide-music' }
 ]
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 const activeMediaLabel = computed(() =>
-  mediaTypes.find(mediaType => mediaType.value === props.activeMediaType)?.label ?? 'Media'
+  appUi.value.media[props.activeMediaType] ?? appUi.value.media.media
 )
 </script>
 
@@ -98,7 +102,7 @@ const activeMediaLabel = computed(() =>
               :name="mediaType.icon"
               class="size-4"
             />
-            <span>{{ mediaType.label }}</span>
+            <span>{{ ui.media[mediaType.value] }}</span>
           </div>
         </div>
       </div>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AppUiInjection } from '~/utils/app-ui'
+
 type QueueProgress = {
   status: string
   progressPercent: number
@@ -31,6 +33,8 @@ const emit = defineEmits<{
   clearActivityQueue: []
   removeActivityJob: [jobId: string]
 }>()
+const appUi = inject('appUi') as AppUiInjection
+const ui = computed(() => appUi.value)
 
 function detectKind(path: string) {
   const extension = path.split('.').pop()?.toLowerCase() || ''
@@ -81,8 +85,8 @@ function describeActivity(job: MixedJob) {
     : detectKind(job.inputPath) === 'image'
       ? job.imageFormat
       : job.audioFormat
-  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px edge` : ''
-  return `${job.mode} -> ${target}${resize}`
+  const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px ${appUi.value.activity.edge}` : ''
+  return `${appUi.value.modes[job.mode] ?? job.mode} -> ${target}${resize}`
 }
 </script>
 
@@ -92,17 +96,17 @@ function describeActivity(job: MixedJob) {
       <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Activity batch
+            {{ ui.activity.title }}
           </p>
           <h2 class="mt-2 text-xl font-semibold text-white">
-            Saved operations
+            {{ ui.activity.subtitle }}
           </h2>
         </div>
         <div class="flex items-center gap-3">
           <UBadge
             color="primary"
             variant="soft"
-            :label="activityQueue.length + ' queued'"
+            :label="`${activityQueue.length} ${ui.activity.queued}`"
           />
           <UButton
             icon="i-lucide-trash-2"
@@ -111,7 +115,7 @@ function describeActivity(job: MixedJob) {
             :disabled="!activityQueue.length"
             @click="emit('clearActivityQueue')"
           >
-            Clear
+            {{ ui.activity.clear }}
           </UButton>
         </div>
       </div>
@@ -133,18 +137,18 @@ function describeActivity(job: MixedJob) {
           <UBadge
             color="neutral"
             variant="soft"
-            :label="job.mode"
+            :label="ui.modes[job.mode] ?? job.mode"
           />
           <UBadge
             color="neutral"
             variant="soft"
-            :label="detectKind(job.inputPath)"
+            :label="ui.media[detectKind(job.inputPath)] ?? detectKind(job.inputPath)"
           />
           <UBadge
             v-if="mixedJobProgress(job)"
             :color="statusColor(mixedJobProgress(job)?.status)"
             variant="soft"
-            :label="mixedJobProgress(job)?.status || 'queued'"
+            :label="ui.status[mixedJobProgress(job)?.status || 'queued'] ?? mixedJobProgress(job)?.status ?? ui.status.queued"
           />
         </div>
         <p class="truncate text-xs text-stone-500">
@@ -175,7 +179,7 @@ function describeActivity(job: MixedJob) {
             variant="ghost"
             @click="emit('removeActivityJob', job.jobId)"
           >
-            Remove
+            {{ ui.activity.remove }}
           </UButton>
         </div>
       </div>
@@ -184,8 +188,8 @@ function describeActivity(job: MixedJob) {
     <UEmptyState
       v-else
       icon="i-lucide-layers-3"
-      title="No mixed activity batch yet"
-      description="Build a compress, convert, or GIF configuration above, then add it here as a saved activity."
+      :title="ui.activity.emptyTitle"
+      :description="ui.activity.emptyDescription"
     />
   </UCard>
 </template>
