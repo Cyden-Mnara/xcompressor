@@ -15,6 +15,12 @@ use std::{
     time::Duration,
 };
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 /// Shared state for one active batch run.
 ///
 /// Each FFmpeg child process is registered while it is running so cancellation
@@ -80,7 +86,9 @@ pub(crate) fn cancel_active_batch_runs(
 pub(crate) fn terminate_process(pid: u32) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("taskkill")
+        let mut command = Command::new("taskkill");
+        let status = command
+            .creation_flags(CREATE_NO_WINDOW)
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .status()
             .map_err(|error| format!("Failed to terminate ffmpeg process {pid}: {error}"))?;

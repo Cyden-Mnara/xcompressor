@@ -22,6 +22,12 @@ use crate::{
     ResourcePlanRequest,
 };
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 enum RunFfmpegError {
     Failed(String),
     Cancelled,
@@ -48,6 +54,16 @@ fn detect_media_kind(path: &Path) -> &'static str {
         "mp3" | "wav" | "aac" | "m4a" | "flac" | "opus" | "ogg" => "audio",
         _ => "unknown",
     }
+}
+
+#[cfg(target_os = "windows")]
+fn run_silently(command: &mut Command) -> &mut Command {
+    command.creation_flags(CREATE_NO_WINDOW)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn run_silently(command: &mut Command) -> &mut Command {
+    command
 }
 
 fn preset_profile(preset_id: &str) -> PresetProfile {
@@ -577,16 +593,19 @@ fn emit_cancelled_progress(
 
 fn probe_duration_seconds(app: &AppHandle, input_path: &Path) -> Option<f64> {
     let ffprobe = resolve_tool_path(app, "ffprobe");
-    let output = Command::new(ffprobe)
-        .args([
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-        ])
-        .arg(input_path)
+    let mut command = Command::new(ffprobe);
+    let output = run_silently(
+        command
+            .args([
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+            ])
+            .arg(input_path),
+    )
         .output()
         .ok()?;
 
@@ -639,6 +658,7 @@ fn run_ffmpeg(
 
     let ffmpeg = resolve_tool_path(app, "ffmpeg");
     let mut command = Command::new(ffmpeg);
+    run_silently(&mut command);
     if overwrite {
         command.arg("-y");
     } else {
@@ -1247,8 +1267,8 @@ fn execute_batch(
     }
 
     let ffmpeg = resolve_tool_path(&app, "ffmpeg");
-    let version_check = Command::new(ffmpeg)
-        .arg("-version")
+    let mut version_command = Command::new(ffmpeg);
+    let version_check = run_silently(version_command.arg("-version"))
         .output()
         .map_err(|error| format!("ffmpeg is required but not available: {error}"))?;
     if !version_check.status.success() {
