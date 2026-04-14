@@ -20,10 +20,25 @@ type BootstrapData = {
   gifWorkflow: string[]
 }
 
+type GuideCopy = {
+  workspaceBadge: string
+  introBody: string
+  setupSuffix: string
+  activePresetTitle: string
+  defaultPresetLabel: string
+  qualityLabel: string
+  sizeDeltaLabel: string
+  guideTitle: string
+  guideSteps: string[]
+  detectedNote: string
+  workflowTitle: string
+}
+
 const props = defineProps<{
   bootstrap: BootstrapData | null
   activePreset: BootstrapPreset | undefined
   activeMediaType: string
+  guideCopy: GuideCopy
 }>()
 
 const mediaTypes = [
@@ -47,7 +62,7 @@ const activeMediaLabel = computed(() =>
           <UBadge
             color="primary"
             variant="soft"
-            label="Workspace overview"
+            :label="guideCopy.workspaceBadge"
           />
           <UBadge
             v-if="bootstrap?.version"
@@ -61,7 +76,7 @@ const activeMediaLabel = computed(() =>
             xcompressor
           </h1>
           <p class="mt-2 text-sm leading-6 text-stone-300">
-            Add media, tune the selected output, then run the queue.
+            {{ guideCopy.introBody }}
           </p>
         </div>
       </div>
@@ -70,7 +85,7 @@ const activeMediaLabel = computed(() =>
     <div class="space-y-4">
       <div class="space-y-3">
         <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-          {{ activeMediaLabel }} setup
+          {{ activeMediaLabel }} {{ guideCopy.setupSuffix }}
         </p>
         <div class="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
           <div
@@ -91,10 +106,10 @@ const activeMediaLabel = computed(() =>
       <div class="space-y-4 grid gap-4 grid-cols-2 xl:grid-cols-1">
         <div class="rounded-lg border border-amber-500/20 bg-amber-500/8 p-4 h-full xl:h-max">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
-            Active preset
+            {{ guideCopy.activePresetTitle }}
           </p>
           <p class="mt-2 text-xl font-medium text-white">
-            {{ activePreset?.label || 'Balanced' }}
+            {{ activePreset?.label || guideCopy.defaultPresetLabel }}
           </p>
           <p class="mt-2 text-sm leading-6 text-stone-300">
             {{ activePreset?.description }}
@@ -102,7 +117,7 @@ const activeMediaLabel = computed(() =>
           <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p class="text-stone-500">
-                Quality
+                {{ guideCopy.qualityLabel }}
               </p>
               <p class="font-medium text-stone-100">
                 {{ activePreset?.qualityRange }}
@@ -110,7 +125,7 @@ const activeMediaLabel = computed(() =>
             </div>
             <div>
               <p class="text-stone-500">
-                Size delta
+                {{ guideCopy.sizeDeltaLabel }}
               </p>
               <p class="font-medium text-stone-100">
                 {{ activePreset?.sizeReductionRange }}
@@ -121,11 +136,39 @@ const activeMediaLabel = computed(() =>
 
         <div class="space-y-3">
           <p class="text-xs font-semibold uppercase tracking-[0.25em] text-stone-400">
-            Workflow
+            {{ guideCopy.guideTitle }}
           </p>
           <ol class="space-y-2">
             <li
-              v-for="(step, index) in bootstrap?.gifWorkflow || []"
+              v-for="(step, index) in guideCopy.guideSteps"
+              :key="step"
+              class="flex gap-3 rounded-lg border border-white/8 bg-white/5 p-3"
+            >
+              <div
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-xs font-semibold text-amber-300"
+              >
+                {{ index + 1 }}
+              </div>
+              <p class="text-xs leading-6 text-stone-300">
+                {{ step }}
+              </p>
+            </li>
+          </ol>
+          <p class="text-xs leading-6 text-stone-400">
+            {{ guideCopy.detectedNote }}
+          </p>
+          <p
+            v-if="bootstrap?.gifWorkflow?.length"
+            class="pt-2 text-xs font-semibold uppercase tracking-[0.25em] text-stone-400"
+          >
+            {{ guideCopy.workflowTitle }}
+          </p>
+          <ol
+            v-if="bootstrap?.gifWorkflow?.length"
+            class="space-y-2"
+          >
+            <li
+              v-for="(step, index) in bootstrap.gifWorkflow"
               :key="step"
               class="flex gap-3 rounded-lg border border-white/8 bg-white/5 p-3"
             >

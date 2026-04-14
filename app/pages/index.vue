@@ -143,16 +143,150 @@ type MixedJob = {
 
 type QueueItem = string | GifSegment
 
+type GuideLanguage = 'en-US' | 'sw-TZ'
+
+type TourStep = {
+  title: string
+  body: string
+  target: string
+}
+
+type GuideCopy = {
+  workspaceBadge: string
+  introBody: string
+  setupSuffix: string
+  activePresetTitle: string
+  defaultPresetLabel: string
+  qualityLabel: string
+  sizeDeltaLabel: string
+  guideTitle: string
+  guideSteps: string[]
+  detectedNote: string
+  workflowTitle: string
+  tourTitle: string
+  tourSteps: TourStep[]
+  tourBack: string
+  tourNext: string
+  tourDone: string
+  tourSkip: string
+  languageLabel: string
+}
+
+const guideDictionary: Record<GuideLanguage, GuideCopy> = {
+  'en-US': {
+    workspaceBadge: 'Workspace overview',
+    introBody: 'Add media, tune the selected output, then run the queue.',
+    setupSuffix: 'setup',
+    activePresetTitle: 'Active preset',
+    defaultPresetLabel: 'Balanced',
+    qualityLabel: 'Quality',
+    sizeDeltaLabel: 'Size delta',
+    guideTitle: 'Quick guide',
+    guideSteps: [
+      'Drop files anywhere or use Add media.',
+      'Select a queue item to edit that file.',
+      'Choose its mode, preset, target format, and output folder.',
+      'Run the queue when every selected job is ready.'
+    ],
+    detectedNote: 'File type and preset follow the selected queue item.',
+    workflowTitle: 'GIF workflow',
+    tourTitle: 'First run guide',
+    tourSteps: [
+      {
+        title: 'Add media',
+        body: 'Drop video, image, or audio files anywhere in the window, or use Add media from this setup panel.',
+        target: 'job-config'
+      },
+      {
+        title: 'Read the current context',
+        body: 'This guide panel follows the selected file type and preset, so it changes as you move through the queue.',
+        target: 'intro-panel'
+      },
+      {
+        title: 'Select a queued item',
+        body: 'The queue is where each file lives. Pick an item here to edit its own mode, preset, format, and output folder.',
+        target: 'source-queue'
+      },
+      {
+        title: 'Run the queue',
+        body: 'When the selected jobs are ready, run the queue from the setup panel. Progress appears beside each item.',
+        target: 'job-config'
+      }
+    ],
+    tourBack: 'Back',
+    tourNext: 'Next',
+    tourDone: 'Done',
+    tourSkip: 'Skip',
+    languageLabel: 'Guide language'
+  },
+  'sw-TZ': {
+    workspaceBadge: 'Muhtasari wa kazi',
+    introBody: 'Ongeza faili, rekebisha matokeo ya kipengee kilichochaguliwa, kisha endesha foleni.',
+    setupSuffix: 'mipangilio',
+    activePresetTitle: 'Preset inayotumika',
+    defaultPresetLabel: 'Wastani',
+    qualityLabel: 'Ubora',
+    sizeDeltaLabel: 'Mabadiliko ya ukubwa',
+    guideTitle: 'Mwongozo mfupi',
+    guideSteps: [
+      'Dondosha faili popote au tumia Add media.',
+      'Chagua kipengee kwenye foleni ili kuhariri faili hiyo.',
+      'Chagua mode, preset, fomati ya matokeo, na folda ya kuhifadhi.',
+      'Endesha foleni kila kazi ikiwa tayari.'
+    ],
+    detectedNote: 'Aina ya faili na preset hufuata kipengee kilichochaguliwa kwenye foleni.',
+    workflowTitle: 'Mtiririko wa GIF',
+    tourTitle: 'Mwongozo wa mara ya kwanza',
+    tourSteps: [
+      {
+        title: 'Ongeza faili',
+        body: 'Dondosha video, picha, au sauti popote kwenye dirisha, au tumia Add media kwenye paneli hii ya mipangilio.',
+        target: 'job-config'
+      },
+      {
+        title: 'Soma muktadha wa sasa',
+        body: 'Paneli hii ya mwongozo hufuata aina ya faili na preset ya kipengee kilichochaguliwa.',
+        target: 'intro-panel'
+      },
+      {
+        title: 'Chagua kipengee kwenye foleni',
+        body: 'Foleni ndiyo sehemu ya kila faili. Chagua kipengee hapa ili kuhariri mode, preset, fomati, na folda yake.',
+        target: 'source-queue'
+      },
+      {
+        title: 'Endesha foleni',
+        body: 'Kazi zikiwa tayari, endesha foleni kutoka paneli ya mipangilio. Maendeleo yataonekana pembeni ya kila kipengee.',
+        target: 'job-config'
+      }
+    ],
+    tourBack: 'Nyuma',
+    tourNext: 'Endelea',
+    tourDone: 'Maliza',
+    tourSkip: 'Ruka',
+    languageLabel: 'Lugha ya mwongozo'
+  }
+}
+
 const themeOptions = [
   { label: 'System', value: 'system' },
   { label: 'Dark', value: 'dark' },
   { label: 'Light', value: 'light' }
 ]
+const languageOptions = [
+  { label: 'English (US)', value: 'en-US' },
+  { label: 'Kiswahili (TZ)', value: 'sw-TZ' }
+]
+const languageStorageKey = 'xcompressor.guideLanguage'
+const onboardingStorageKey = 'xcompressor.onboardingSeen'
 
 const files = ref<string[]>([])
 const outputDir = ref('')
 const mode = ref('compress')
 const selectedMediaType = ref('video')
+const guideLanguage = ref<GuideLanguage>('en-US')
+const showGuideTour = ref(false)
+const guideTourStep = ref(0)
+const guideTargetRect = ref<DOMRect | null>(null)
 const activeWorkspace = ref<'work' | 'development'>('work')
 const canOpenDevelopment = import.meta.dev
 const colorMode = useColorMode()
@@ -197,6 +331,54 @@ const selectedQueueJob = computed(() => activityQueue.value.find(job => job.jobI
 const activeIntroPreset = computed(() =>
   bootstrap.value?.presets.find(preset => preset.id === (selectedQueueJob.value?.presetId ?? presetId.value))
 )
+const guideCopy = computed(() => guideDictionary[guideLanguage.value])
+const activeTourStep = computed(() => guideCopy.value.tourSteps[guideTourStep.value] ?? {
+  title: '',
+  body: '',
+  target: ''
+})
+const isLastTourStep = computed(() => guideTourStep.value >= guideCopy.value.tourSteps.length - 1)
+const guideSpotlightStyle = computed(() => {
+  const rect = guideTargetRect.value
+  if (!rect) {
+    return {
+      opacity: '0'
+    }
+  }
+
+  const padding = 8
+  return {
+    left: `${Math.max(rect.left - padding, 8)}px`,
+    top: `${Math.max(rect.top - padding, 8)}px`,
+    width: `${Math.min(rect.width + padding * 2, window.innerWidth - Math.max(rect.left - padding, 8) - 8)}px`,
+    height: `${Math.min(rect.height + padding * 2, window.innerHeight - Math.max(rect.top - padding, 8) - 8)}px`,
+    opacity: '1'
+  }
+})
+const guideCardStyle = computed(() => {
+  const rect = guideTargetRect.value
+  const cardWidth = 448
+
+  if (!rect) {
+    return {
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%, -50%)'
+    }
+  }
+
+  const left = Math.min(Math.max(rect.left, 16), Math.max(window.innerWidth - cardWidth - 16, 16))
+  const spaceBelow = window.innerHeight - rect.bottom
+  const top = spaceBelow > 240
+    ? rect.bottom + 18
+    : Math.max(rect.top - 260, 16)
+
+  return {
+    left: `${left}px`,
+    top: `${top}px`,
+    transform: 'none'
+  }
+})
 const videoFiles = computed(() => files.value.filter(path => detectKind(path) === 'video'))
 const videoFileOptions = computed(() =>
   videoFiles.value.map(path => ({
@@ -348,11 +530,102 @@ const cpuUsedPercent = computed(() => {
   return Math.round(metrics.cpuUsagePercent)
 })
 
+useHead({
+  htmlAttrs: {
+    lang: computed(() => guideLanguage.value)
+  }
+})
+
 let unlistenBatchProgress: null | (() => void) = null
 let unlistenTauriDragDrop: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
 let liveMetricsStartTimer: ReturnType<typeof setTimeout> | null = null
 let resourcePlanRequestId = 0
+
+function normalizeGuideLanguage(value: string | undefined): GuideLanguage | null {
+  if (!value) {
+    return null
+  }
+
+  if (value in guideDictionary) {
+    return value as GuideLanguage
+  }
+
+  const lowerValue = value.toLowerCase()
+  if (lowerValue.startsWith('sw')) {
+    return 'sw-TZ'
+  }
+
+  if (lowerValue.startsWith('en')) {
+    return 'en-US'
+  }
+
+  return null
+}
+
+function detectGuideLanguage() {
+  if (!import.meta.client) {
+    return 'en-US'
+  }
+
+  const storedLanguage = normalizeGuideLanguage(localStorage.getItem(languageStorageKey) ?? undefined)
+  if (storedLanguage) {
+    return storedLanguage
+  }
+
+  const browserLanguages = navigator.languages?.length ? navigator.languages : [navigator.language]
+  return browserLanguages
+    .map(language => normalizeGuideLanguage(language))
+    .find((language): language is GuideLanguage => Boolean(language)) ?? 'en-US'
+}
+
+function persistGuideLanguage() {
+  if (import.meta.client) {
+    localStorage.setItem(languageStorageKey, guideLanguage.value)
+  }
+}
+
+function finishGuideTour() {
+  showGuideTour.value = false
+  guideTourStep.value = 0
+  guideTargetRect.value = null
+
+  if (import.meta.client) {
+    localStorage.setItem(onboardingStorageKey, 'true')
+  }
+}
+
+function nextGuideTourStep() {
+  if (isLastTourStep.value) {
+    finishGuideTour()
+    return
+  }
+
+  guideTourStep.value += 1
+}
+
+function previousGuideTourStep() {
+  guideTourStep.value = Math.max(guideTourStep.value - 1, 0)
+}
+
+async function updateGuideTourTarget() {
+  if (!import.meta.client || !showGuideTour.value || !activeTourStep.value.target) {
+    guideTargetRect.value = null
+    return
+  }
+
+  await nextTick()
+
+  const target = document.querySelector<HTMLElement>(`[data-guide-target="${activeTourStep.value.target}"]`)
+  if (!target) {
+    guideTargetRect.value = null
+    return
+  }
+
+  target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  await nextTick()
+  guideTargetRect.value = target.getBoundingClientRect()
+}
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -1286,6 +1559,13 @@ async function openSelectedGifVideoInSystemPlayer() {
 }
 
 onMounted(() => {
+  guideLanguage.value = detectGuideLanguage()
+  showGuideTour.value = import.meta.client && localStorage.getItem(onboardingStorageKey) !== 'true'
+  if (import.meta.client) {
+    window.addEventListener('resize', updateGuideTourTarget)
+    window.addEventListener('scroll', updateGuideTourTarget, true)
+    void updateGuideTourTarget()
+  }
   void registerTauriDragDrop()
   void loadBootstrap().then(() => {
     void refreshResourcePlan()
@@ -1303,6 +1583,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unlistenBatchProgress?.()
   unlistenTauriDragDrop?.()
+  if (import.meta.client) {
+    window.removeEventListener('resize', updateGuideTourTarget)
+    window.removeEventListener('scroll', updateGuideTourTarget, true)
+  }
   stopLiveMetricsPolling()
 })
 
@@ -1324,6 +1608,16 @@ watch(selectedGifVideo, async () => {
 
 watch(selectedGifVideoDuration, () => {
   clampGifRange()
+})
+
+watch(guideLanguage, () => {
+  persistGuideLanguage()
+  guideTourStep.value = Math.min(guideTourStep.value, guideCopy.value.tourSteps.length - 1)
+  void updateGuideTourTarget()
+})
+
+watch([showGuideTour, guideTourStep, activeWorkspace], () => {
+  void updateGuideTourTarget()
 })
 
 watch(outputDir, (nextOutputDir) => {
@@ -1394,6 +1688,70 @@ function onGifVideoError() {
         </p>
       </div>
     </div>
+    <div
+      v-if="showGuideTour"
+      class="fixed inset-0 z-[60] bg-black/70"
+    >
+      <div
+        class="pointer-events-none fixed rounded-lg border-2 border-amber-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_28px_rgba(251,191,36,0.45)] transition-all duration-200"
+        :style="guideSpotlightStyle"
+      />
+      <div
+        class="fixed w-[calc(100vw-2rem)] max-w-md rounded-lg border border-amber-300/35 bg-stone-950 p-5 shadow-2xl transition-all duration-200"
+        :style="guideCardStyle"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
+              {{ guideCopy.tourTitle }}
+            </p>
+            <h2 class="mt-3 text-2xl font-semibold text-white">
+              {{ activeTourStep.title }}
+            </h2>
+          </div>
+          <UBadge
+            color="neutral"
+            variant="soft"
+            :label="`${guideTourStep + 1}/${guideCopy.tourSteps.length}`"
+          />
+        </div>
+        <p class="mt-4 text-sm leading-6 text-stone-300">
+          {{ activeTourStep.body }}
+        </p>
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <USelect
+            v-model="guideLanguage"
+            :items="languageOptions"
+            size="sm"
+            class="w-40"
+            :aria-label="guideCopy.languageLabel"
+          />
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              @click="finishGuideTour"
+            >
+              {{ guideCopy.tourSkip }}
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="soft"
+              :disabled="guideTourStep === 0"
+              @click="previousGuideTourStep"
+            >
+              {{ guideCopy.tourBack }}
+            </UButton>
+            <UButton
+              color="primary"
+              @click="nextGuideTourStep"
+            >
+              {{ isLastTourStep ? guideCopy.tourDone : guideCopy.tourNext }}
+            </UButton>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="m-auto h-full max-w-425 px-4 py-4 lg:px-6">
       <div
         v-if="canOpenDevelopment"
@@ -1437,6 +1795,13 @@ function onGifVideoError() {
           class="w-32"
           aria-label="Theme"
         />
+        <USelect
+          v-model="guideLanguage"
+          :items="languageOptions"
+          size="sm"
+          class="w-40"
+          :aria-label="guideCopy.languageLabel"
+        />
       </div>
       <div
         v-else
@@ -1459,21 +1824,35 @@ function onGifVideoError() {
           class="w-32"
           aria-label="Theme"
         />
+        <USelect
+          v-model="guideLanguage"
+          :items="languageOptions"
+          size="sm"
+          class="w-40"
+          :aria-label="guideCopy.languageLabel"
+        />
       </div>
 
       <div
         v-if="activeWorkspace === 'work'"
         class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)] xl:grid-cols-[300px_minmax(0,1fr)_440px]"
       >
-        <aside class="grid min-h-0 gap-4">
+        <aside
+          class="grid min-h-0 gap-4"
+          data-guide-target="intro-panel"
+        >
           <IntroPanel
             :bootstrap="bootstrap"
             :active-preset="activeIntroPreset"
             :active-media-type="selectedQueueMediaKind"
+            :guide-copy="guideCopy"
           />
         </aside>
 
-        <main class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)]">
+        <main
+          class="grid min-h-0 gap-4 lg:max-h-[calc(100dvh-5rem)]"
+          data-guide-target="job-config"
+        >
           <JobConfigurator
             v-model:output-dir="outputDir"
             v-model:mode="mode"
@@ -1524,7 +1903,10 @@ function onGifVideoError() {
           />
         </main>
 
-        <aside class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
+        <aside
+          class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3"
+          data-guide-target="source-queue"
+        >
           <div class="rounded-lg border border-white/10 bg-stone-950/85 p-3">
             <div class="grid grid-cols-3 gap-2 text-center">
               <div class="rounded-lg bg-white/5 p-2">
