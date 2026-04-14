@@ -169,6 +169,7 @@ type GuideCopy = {
   tourNext: string
   tourDone: string
   tourSkip: string
+  themeLabel: string
   languageLabel: string
 }
 
@@ -217,6 +218,7 @@ const guideDictionary: Record<GuideLanguage, GuideCopy> = {
     tourNext: 'Next',
     tourDone: 'Done',
     tourSkip: 'Skip',
+    themeLabel: 'Theme',
     languageLabel: 'Guide language'
   },
   'sw-TZ': {
@@ -263,6 +265,7 @@ const guideDictionary: Record<GuideLanguage, GuideCopy> = {
     tourNext: 'Endelea',
     tourDone: 'Maliza',
     tourSkip: 'Ruka',
+    themeLabel: 'Mandhari',
     languageLabel: 'Lugha ya mwongozo'
   }
 }
@@ -1719,13 +1722,16 @@ function onGifVideoError() {
           {{ activeTourStep.body }}
         </p>
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <USelect
-            v-model="guideLanguage"
-            :items="languageOptions"
-            size="sm"
-            class="w-40"
-            :aria-label="guideCopy.languageLabel"
-          />
+          <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
+            <span>{{ guideCopy.languageLabel }}</span>
+            <USelect
+              v-model="guideLanguage"
+              :items="languageOptions"
+              size="sm"
+              class="w-40"
+              :aria-label="guideCopy.languageLabel"
+            />
+          </label>
           <div class="flex flex-wrap gap-2">
             <UButton
               color="neutral"
@@ -1788,20 +1794,26 @@ function onGifVideoError() {
         >
           Check updates
         </UButton>
-        <USelect
-          v-model="colorMode.preference"
-          :items="themeOptions"
-          size="sm"
-          class="w-32"
-          aria-label="Theme"
-        />
-        <USelect
-          v-model="guideLanguage"
-          :items="languageOptions"
-          size="sm"
-          class="w-40"
-          :aria-label="guideCopy.languageLabel"
-        />
+        <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
+          <span>{{ guideCopy.themeLabel }}</span>
+          <USelect
+            v-model="colorMode.preference"
+            :items="themeOptions"
+            size="sm"
+            class="w-32"
+            :aria-label="guideCopy.themeLabel"
+          />
+        </label>
+        <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
+          <span>{{ guideCopy.languageLabel }}</span>
+          <USelect
+            v-model="guideLanguage"
+            :items="languageOptions"
+            size="sm"
+            class="w-40"
+            :aria-label="guideCopy.languageLabel"
+          />
+        </label>
       </div>
       <div
         v-else
@@ -1817,20 +1829,26 @@ function onGifVideoError() {
         >
           Check updates
         </UButton>
-        <USelect
-          v-model="colorMode.preference"
-          :items="themeOptions"
-          size="sm"
-          class="w-32"
-          aria-label="Theme"
-        />
-        <USelect
-          v-model="guideLanguage"
-          :items="languageOptions"
-          size="sm"
-          class="w-40"
-          :aria-label="guideCopy.languageLabel"
-        />
+        <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
+          <span>{{ guideCopy.themeLabel }}</span>
+          <USelect
+            v-model="colorMode.preference"
+            :items="themeOptions"
+            size="sm"
+            class="w-32"
+            :aria-label="guideCopy.themeLabel"
+          />
+        </label>
+        <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
+          <span>{{ guideCopy.languageLabel }}</span>
+          <USelect
+            v-model="guideLanguage"
+            :items="languageOptions"
+            size="sm"
+            class="w-40"
+            :aria-label="guideCopy.languageLabel"
+          />
+        </label>
       </div>
 
       <div
