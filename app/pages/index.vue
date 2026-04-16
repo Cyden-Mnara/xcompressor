@@ -1939,6 +1939,24 @@ function onGifVideoError() {
         >
           {{ appUi.toolbar.checkUpdates }}
         </UButton>
+        <UButton
+          to="/credits"
+          icon="i-lucide-users"
+          color="neutral"
+          variant="soft"
+          size="sm"
+        >
+          Credits
+        </UButton>
+        <UButton
+          to="/support"
+          icon="i-lucide-coffee"
+          color="primary"
+          variant="soft"
+          size="sm"
+        >
+          Support
+        </UButton>
         <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
           <span>{{ guideCopy.themeLabel }}</span>
           <USelect
@@ -1973,6 +1991,24 @@ function onGifVideoError() {
           @click="checkForUpdates"
         >
           {{ appUi.toolbar.checkUpdates }}
+        </UButton>
+        <UButton
+          to="/credits"
+          icon="i-lucide-users"
+          color="neutral"
+          variant="soft"
+          size="sm"
+        >
+          Credits
+        </UButton>
+        <UButton
+          to="/support"
+          icon="i-lucide-coffee"
+          color="primary"
+          variant="soft"
+          size="sm"
+        >
+          Support
         </UButton>
         <label class="flex items-center gap-2 text-xs font-medium text-stone-300">
           <span>{{ guideCopy.themeLabel }}</span>

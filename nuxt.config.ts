@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   nitro: {
     preset: 'static',
     prerender: {
-      routes: ['/']
+      routes: ['/', '/credits', '/support']
     }
   },
 
@@ -52,6 +52,7 @@ export default defineNuxtConfig({
         'lucide:circle-alert',
         'lucide:circle-check',
         'lucide:clapperboard',
+        'lucide:coffee',
         'lucide:download',
         'lucide:external-link',
         'lucide:film',
@@ -59,6 +60,7 @@ export default defineNuxtConfig({
         'lucide:folder-output',
         'lucide:folder-plus',
         'lucide:git-commit-horizontal',
+        'lucide:heart-handshake',
         'lucide:image',
         'lucide:info',
         'lucide:layers-3',
@@ -72,11 +74,13 @@ export default defineNuxtConfig({
         'lucide:plus',
         'lucide:refresh-ccw',
         'lucide:refresh-cw',
+        'lucide:scroll-text',
         'lucide:skip-back',
         'lucide:square',
         'lucide:sun',
         'lucide:terminal',
         'lucide:trash-2',
+        'lucide:users',
         'lucide:video',
         'lucide:x'
       ],

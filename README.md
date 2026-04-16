@@ -15,6 +15,23 @@ Tauri + Rust desktop application scaffold for batch multimedia compression.
 - [Architecture documentation](docs/architecture.md)
 - [System documentation](docs/system.md)
 - [Release guide](docs/releasing.md)
+- [Open source release checklist](docs/open-source-release-checklist.md)
+- [End user notice draft](docs/end-user-notice.md)
+- [Contribution guide](CONTRIBUTING.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+
+## Credits and support
+
+xcompressor is built on FFmpeg and the wider open source multimedia ecosystem. The app includes static pages for:
+
+- `/credits` - acknowledgements for FFmpeg developers and open source contributors
+- `/support` - project support and Buy Me a Coffee link
+
+Before publishing, replace the placeholder Buy Me a Coffee URL in [app/pages/support.vue](app/pages/support.vue) and [.github/FUNDING.yml](.github/FUNDING.yml) with your real support link.
+
+If release builds bundle FFmpeg binaries, also publish the matching FFmpeg source, license notices, and build details required for the exact binaries you distribute. Start with the official FFmpeg legal guidance: https://ffmpeg.org/legal.html
+
+Donations are optional support for xcompressor maintenance only. They are not payment for FFmpeg, codec licenses, patent rights, warranty, private support, or ownership rights.
 
 ## Run
 
