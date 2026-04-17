@@ -36,7 +36,7 @@ Future donations, if enabled, should be optional support for xcompressor mainten
 ## Run
 
 ```bash
-pnpm dev
+pnpm tauri dev
 ```
 
 You can also run everything from the project root:
