@@ -63,7 +63,7 @@ This repo includes [.github/workflows/build-desktop.yml](.github/workflows/build
 
 The workflow runs on:
 
-- pushes to `main`
+- pushes to `master`
 - pull requests
 - manual workflow dispatch
 
