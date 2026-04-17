@@ -1,5 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+declare const process: {
+  env: Record<string, string | undefined>
+}
+
 export default defineNuxtConfig({
+
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui'
@@ -8,6 +13,9 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: {
     enabled: true
+  },
+  app: {
+    baseURL: process.env.NUXT_APP_BASE_URL || '/'
   },
 
   css: ['~/assets/css/main.css'],
