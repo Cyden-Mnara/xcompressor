@@ -1950,7 +1950,7 @@ function onGifVideoError() {
         </UButton>
         <UButton
           to="/support"
-          icon="i-lucide-coffee"
+          icon="i-lucide-heart-handshake"
           color="primary"
           variant="soft"
           size="sm"
@@ -2003,7 +2003,7 @@ function onGifVideoError() {
         </UButton>
         <UButton
           to="/support"
-          icon="i-lucide-coffee"
+          icon="i-lucide-heart-handshake"
           color="primary"
           variant="soft"
           size="sm"

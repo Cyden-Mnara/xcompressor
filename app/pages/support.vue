@@ -1,11 +1,9 @@
 <script setup lang="ts">
-const coffeeUrl = 'https://www.buymeacoffee.com/xcompressor'
 const seoTitle = 'Support xcompressor | Keep the Project Alive'
 const seoDescription = 'Support xcompressor development, maintenance, testing, documentation, and open source multimedia tooling.'
 const seoKeywords = [
   'support xcompressor',
-  'buy me a coffee xcompressor',
-  'sponsor open source',
+  'contribute to open source',
   'support FFmpeg app',
   'open source video compressor',
   'multimedia compression tool',
@@ -52,18 +50,16 @@ useSeoMeta({
           Help keep xcompressor alive.
         </h1>
         <p class="mt-5 max-w-3xl text-base leading-7 text-stone-300">
-          Optional contributions help cover xcompressor testing time, release work, documentation, bug fixes, packaging, and maintenance.
+          Financial support is not available yet. You can still help xcompressor by testing releases, reporting bugs, improving documentation, and sharing feedback from real media workflows.
         </p>
         <div class="mt-6 flex flex-wrap gap-3">
           <UButton
-            :to="coffeeUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            icon="i-lucide-coffee"
+            disabled
+            icon="i-lucide-heart-handshake"
             color="primary"
             size="lg"
           >
-            Buy me a coffee
+            Support options coming soon
           </UButton>
           <UButton
             to="/credits"
@@ -106,10 +102,10 @@ useSeoMeta({
 
       <section class="mt-5 rounded-lg border border-white/10 bg-stone-950/85 p-5">
         <h2 class="text-2xl font-semibold text-white">
-          Donation Policy
+          Support Policy
         </h2>
         <p class="mt-4 text-sm leading-6 text-stone-300">
-          Support is not payment for FFmpeg, codecs, patent licenses, warranty, private support, priority fixes, or ownership rights. FFmpeg remains an independent open source project with its own licenses and maintainers.
+          Future financial support options, if added, will support xcompressor maintenance only. Support will not be payment for FFmpeg, codecs, patent licenses, warranty, private support, priority fixes, or ownership rights. FFmpeg remains an independent open source project with its own licenses and maintainers.
         </p>
       </section>
 

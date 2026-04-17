@@ -45,11 +45,11 @@ licensed under the <a href="https://www.gnu.org/licenses/old-licenses/lgpl-2.1.h
 The matching FFmpeg source for the bundled binaries can be downloaded from this release page.
 ```
 
-## Donation and sponsorship policy
+## Financial support policy
 
-Donations support xcompressor maintenance only. They are not payment for FFmpeg, codecs, patent licenses, warranties, private support, priority fixes, or ownership rights.
+Financial support is not currently enabled. Do not publish donation or sponsorship links until there is a working payout method.
 
-When using Buy Me a Coffee or similar platforms:
+If donations or sponsorships are added later:
 
 - Say that support is optional.
 - Do not gate source code, FFmpeg source, license notices, or required compliance materials behind payment.
@@ -70,6 +70,6 @@ When using Buy Me a Coffee or similar platforms:
 - End-user notice or EULA has been reviewed, if you plan to ship one.
 - `README.md`, `CONTRIBUTING.md`, and `CODE_OF_CONDUCT.md` are current.
 - Credits page mentions FFmpeg and open source dependencies.
-- Support page clearly says donations are optional maintenance support.
+- Support page clearly explains the currently available support options.
 - Download pages include FFmpeg notices and matching FFmpeg source links.
 - Release artifacts include third-party notices.

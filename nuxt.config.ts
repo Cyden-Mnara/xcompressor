@@ -52,7 +52,6 @@ export default defineNuxtConfig({
         'lucide:circle-alert',
         'lucide:circle-check',
         'lucide:clapperboard',
-        'lucide:coffee',
         'lucide:download',
         'lucide:external-link',
         'lucide:film',

@@ -46,11 +46,11 @@ Users should keep backups of important source media before running batch operati
 
 Nothing in this notice prohibits reverse engineering where allowed by the xcompressor project license, the FFmpeg license, or applicable law.
 
-## Donations
+## Financial Support
 
-Donations, sponsorships, or tips support xcompressor maintenance only.
+Financial support is not currently enabled.
 
-They are not payment for FFmpeg, codec licenses, patent rights, warranty, private support, priority fixes, or ownership rights.
+Future donations, sponsorships, or tips, if enabled, will support xcompressor maintenance only. They will not be payment for FFmpeg, codec licenses, patent rights, warranty, private support, priority fixes, or ownership rights.
 
 ## Third-Party Notices
 
