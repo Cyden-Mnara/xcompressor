@@ -61,7 +61,10 @@ const mode = defineModel<string>('mode', { required: true })
 const appUi = inject('appUi') as AppUiInjection
 const ui = computed(() => appUi.value)
 
-const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({ label: preset.label, value: preset.id })))
+const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({
+  label: appUi.value.presets[`${toPresetCopyKey(preset.id)}Label`] ?? preset.label,
+  value: preset.id
+})))
 const currentActivityDisabled = computed(() => !outputDir.value || (!props.activityQueueCount && (mode.value === 'gif' ? !props.gifQueueCount : !props.filesCount)))
 const runLabel = computed(() => {
   if (props.processing) {
@@ -129,6 +132,10 @@ const selectedTarget = computed({
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
+}
+
+function toPresetCopyKey(id: string) {
+  return id.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())
 }
 </script>
 

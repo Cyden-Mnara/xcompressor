@@ -8,6 +8,7 @@ export type AppUiSection
     | 'modes'
     | 'monitor'
     | 'output'
+    | 'presets'
     | 'queue'
     | 'resource'
     | 'status'

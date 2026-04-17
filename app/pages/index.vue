@@ -278,6 +278,14 @@ const appUiDictionary = {
     toolbar: { work: 'Work', development: 'Development', note: 'One job runs at a time to keep the machine responsive.', checkUpdates: 'Check updates' },
     drag: { title: 'Drop files to add them to the queue', body: 'Videos, images, and audio get default settings that you can edit per file.' },
     metrics: { ram: 'RAM', cpu: 'CPU', eta: 'ETA' },
+    presets: {
+      smallLabel: 'Small',
+      smallDescription: 'Aggressive compression for lightweight sharing.',
+      balancedLabel: 'Balanced',
+      balancedDescription: 'Default preset with good visual and audio retention.',
+      highQualityLabel: 'High Quality',
+      highQualityDescription: 'Safer range for archive-ready exports.'
+    },
     job: {
       configure: 'Configure', setup: 'setup', sourceFiles: 'source files', addMedia: 'Add media', output: 'Output', clear: 'Clear',
       outputPlaceholder: 'Choose an output directory', applyDefaults: 'Apply defaults to queue', processingBatch: 'Processing batch...',
@@ -345,6 +353,14 @@ const appUiDictionary = {
     toolbar: { work: 'Kazi', development: 'Maendeleo', note: 'Kazi moja huendeshwa kwa wakati mmoja ili kompyuta ibaki imara.', checkUpdates: 'Angalia masasisho' },
     drag: { title: 'Dondosha faili ili ziongezwe kwenye foleni', body: 'Video, picha, na sauti hupata mipangilio ya kawaida ambayo unaweza kubadilisha kwa kila faili.' },
     metrics: { ram: 'RAM', cpu: 'CPU', eta: 'ETA' },
+    presets: {
+      smallLabel: 'Ndogo',
+      smallDescription: 'Mbanio mkali kwa faili nyepesi za kushirikisha.',
+      balancedLabel: 'Wastani',
+      balancedDescription: 'Preset ya kawaida inayolinda ubora mzuri wa picha na sauti.',
+      highQualityLabel: 'Ubora wa Juu',
+      highQualityDescription: 'Kiwango salama zaidi kwa matokeo ya kuhifadhi muda mrefu.'
+    },
     job: {
       configure: 'Sanidi', setup: 'mipangilio', sourceFiles: 'faili chanzo', addMedia: 'Ongeza media', output: 'Matokeo', clear: 'Futa',
       outputPlaceholder: 'Chagua folda ya kuhifadhi', applyDefaults: 'Tumia mipangilio kwa foleni', processingBatch: 'Inachakata batch...',

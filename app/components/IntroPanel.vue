@@ -54,6 +54,26 @@ const ui = computed(() => appUi.value)
 const activeMediaLabel = computed(() =>
   appUi.value.media[props.activeMediaType] ?? appUi.value.media.media
 )
+const activePresetLabel = computed(() => {
+  const preset = props.activePreset
+  if (!preset) {
+    return props.guideCopy.defaultPresetLabel
+  }
+
+  return appUi.value.presets[`${toPresetCopyKey(preset.id)}Label`] ?? preset.label
+})
+const activePresetDescription = computed(() => {
+  const preset = props.activePreset
+  if (!preset) {
+    return ''
+  }
+
+  return appUi.value.presets[`${toPresetCopyKey(preset.id)}Description`] ?? preset.description
+})
+
+function toPresetCopyKey(id: string) {
+  return id.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())
+}
 </script>
 
 <template>
@@ -113,10 +133,10 @@ const activeMediaLabel = computed(() =>
             {{ guideCopy.activePresetTitle }}
           </p>
           <p class="mt-2 text-xl font-medium text-white">
-            {{ activePreset?.label || guideCopy.defaultPresetLabel }}
+            {{ activePresetLabel }}
           </p>
           <p class="mt-2 text-sm leading-6 text-stone-300">
-            {{ activePreset?.description }}
+            {{ activePresetDescription }}
           </p>
           <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div>
