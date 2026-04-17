@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -42,8 +43,6 @@ jobs:
 
       - name: Generate static site
         run: pnpm generate
-        env:
-          NUXT_APP_BASE_URL: /xcompressor/
 
       - name: Disable Jekyll
         run: touch .output/public/.nojekyll
