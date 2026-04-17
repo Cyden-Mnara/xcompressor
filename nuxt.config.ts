@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   nitro: {
     preset: 'static',
     prerender: {
-      routes: ['/', '/credits', '/support']
+      routes: ['/', '/app', '/credits', '/support']
     }
   },
 
