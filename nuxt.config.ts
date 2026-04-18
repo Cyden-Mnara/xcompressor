@@ -89,7 +89,10 @@ export default defineNuxtConfig({
         'lucide:trash-2',
         'lucide:users',
         'lucide:video',
-        'lucide:x'
+        'lucide:x',
+        'simple-icons:apple',
+        'simple-icons:linux',
+        'simple-icons:windows'
       ],
       scan: true,
       sizeLimitKb: 256
