@@ -36,6 +36,14 @@ useSeoMeta({
           Back to app
         </UButton>
         <UButton
+          to="/"
+          icon="i-lucide-info"
+          color="neutral"
+          variant="soft"
+        >
+          About
+        </UButton>
+        <UButton
           to="/support"
           icon="i-lucide-heart-handshake"
           color="primary"

@@ -65,7 +65,7 @@ Commit the version bump, then create and push a matching tag:
 
 ```bash
 git tag v0.1.1
-git push origin main --tags
+git push origin master --tags
 ```
 
 Pushing the tag triggers:
