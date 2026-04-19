@@ -120,6 +120,24 @@ function basename(path: string) {
             <UButton
               color="neutral"
               variant="soft"
+              icon="i-lucide-play"
+              :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
+              @click="gifPreviewVideo?.play()"
+            >
+              {{ ui.gif.playPreview }}
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-lucide-pause"
+              :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
+              @click="gifPreviewVideo?.pause()"
+            >
+              {{ ui.gif.pausePreview }}
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="soft"
               icon="i-lucide-skip-back"
               :disabled="Boolean(gifPreviewError) || !gifPreviewVideo"
               @click="emit('jumpToClipStart')"

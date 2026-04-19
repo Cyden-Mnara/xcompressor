@@ -80,11 +80,13 @@ function describeActivity(job: MixedJob) {
     return `${job.gif.startSeconds.toFixed(1)}s -> ${end.toFixed(1)}s • ${job.gif.fps} fps • ${job.gif.width}px`
   }
 
-  const target = detectKind(job.inputPath) === 'video'
-    ? job.videoFormat
-    : detectKind(job.inputPath) === 'image'
-      ? job.imageFormat
-      : job.audioFormat
+  const target = job.mode === 'extract-audio'
+    ? job.audioFormat
+    : detectKind(job.inputPath) === 'video'
+      ? job.videoFormat
+      : detectKind(job.inputPath) === 'image'
+        ? job.imageFormat
+        : job.audioFormat
   const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px ${appUi.value.activity.edge}` : ''
   return `${appUi.value.modes[job.mode] ?? job.mode} -> ${target}${resize}`
 }

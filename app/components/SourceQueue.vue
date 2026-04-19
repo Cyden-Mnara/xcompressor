@@ -6,6 +6,7 @@ type QueueProgress = {
   progressPercent: number
   message: string
   speed: string | null
+  outputPath: string | null
 }
 
 type GifSegment = {
@@ -51,6 +52,7 @@ const emit = defineEmits<{
   removeGifSegment: [jobId: string]
   removeActivityJob: [jobId: string]
   selectActivityJob: [jobId: string]
+  openOutput: [path: string]
 }>()
 const appUi = inject('appUi') as AppUiInjection
 const ui = computed(() => appUi.value)
@@ -119,11 +121,13 @@ function describeMixedJob(job: MixedJob) {
   }
 
   const kind = detectKind(job.inputPath)
-  const target = kind === 'video'
-    ? job.videoFormat
-    : kind === 'image'
-      ? job.imageFormat
-      : job.audioFormat
+  const target = job.mode === 'extract-audio'
+    ? job.audioFormat
+    : kind === 'video'
+      ? job.videoFormat
+      : kind === 'image'
+        ? job.imageFormat
+        : job.audioFormat
   const resize = job.resizeLongEdge ? ` • ${job.resizeLongEdge}px ${appUi.value.queue.edge}` : ''
   return `${appUi.value.modes[job.mode] ?? job.mode} -> ${target}${resize}`
 }
@@ -255,7 +259,16 @@ function statusColor(status: string | undefined) {
         >
           {{ ui.queue.skippedGifBody }}
         </p>
-        <div class="flex justify-end">
+        <div class="flex justify-end gap-2">
+          <UButton
+            v-if="queueItemProgress(item)?.status === 'completed' && queueItemProgress(item)?.outputPath"
+            icon="i-lucide-monitor-play"
+            color="neutral"
+            variant="soft"
+            @click.stop="emit('openOutput', queueItemProgress(item)!.outputPath!)"
+          >
+            {{ ui.queue.open }}
+          </UButton>
           <UButton
             icon="i-lucide-x"
             color="neutral"

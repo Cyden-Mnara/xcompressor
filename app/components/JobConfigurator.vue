@@ -44,6 +44,9 @@ const props = defineProps<{
   canRun: boolean
   selectedJob: MixedJob | null
   selectedMediaKind: string
+  selectedGifVideoSrc: string
+  selectedGifVideoDuration: number
+  gifPreviewError: string
 }>()
 
 const emit = defineEmits<{
@@ -54,12 +57,17 @@ const emit = defineEmits<{
   runBatch: []
   cancelBatch: []
   updateSelectedJob: [patch: Partial<MixedJob>]
+  addSelectedGifJob: []
+  loadedGifMetadata: [event: Event]
+  previewGifError: []
+  openSelectedGifExternal: [path: string]
 }>()
 
 const outputDir = defineModel<string>('outputDir', { required: true })
 const mode = defineModel<string>('mode', { required: true })
 const appUi = inject('appUi') as AppUiInjection
 const ui = computed(() => appUi.value)
+const selectedGifPreviewVideo = ref<HTMLVideoElement | null>(null)
 
 const presetItems = computed(() => (props.bootstrap?.presets || []).map(preset => ({
   label: appUi.value.presets[`${toPresetCopyKey(preset.id)}Label`] ?? preset.label,
@@ -81,19 +89,23 @@ const selectedModeOptions = computed(() => props.selectedMediaKind === 'video'
   ? [
       { label: appUi.value.modes.compress, value: 'compress' },
       { label: appUi.value.modes.convert, value: 'convert' },
+      { label: appUi.value.modes['extract-audio'], value: 'extract-audio' },
       { label: appUi.value.modes.gif, value: 'gif' }
     ]
   : [
       { label: appUi.value.modes.compress, value: 'compress' },
       { label: appUi.value.modes.convert, value: 'convert' }
     ])
-const selectedTargetLabel = computed(() => `${appUi.value.media[props.selectedMediaKind] ?? appUi.value.media.media} ${appUi.value.job.target}`)
+const selectedTargetKind = computed(() => props.selectedMediaKind === 'video' && props.selectedJob?.mode === 'extract-audio'
+  ? 'audio'
+  : props.selectedMediaKind)
+const selectedTargetLabel = computed(() => `${appUi.value.media[selectedTargetKind.value] ?? appUi.value.media.media} ${appUi.value.job.target}`)
 const selectedTargetItems = computed(() => {
-  if (props.selectedMediaKind === 'image') {
+  if (selectedTargetKind.value === 'image') {
     return props.imageTargets
   }
 
-  if (props.selectedMediaKind === 'audio') {
+  if (selectedTargetKind.value === 'audio') {
     return props.audioTargets
   }
 
@@ -105,23 +117,23 @@ const selectedTarget = computed({
       return ''
     }
 
-    if (props.selectedMediaKind === 'image') {
+    if (selectedTargetKind.value === 'image') {
       return props.selectedJob.imageFormat
     }
 
-    if (props.selectedMediaKind === 'audio') {
+    if (selectedTargetKind.value === 'audio') {
       return props.selectedJob.audioFormat
     }
 
     return props.selectedJob.videoFormat
   },
   set(value: string) {
-    if (props.selectedMediaKind === 'image') {
+    if (selectedTargetKind.value === 'image') {
       emit('updateSelectedJob', { imageFormat: value })
       return
     }
 
-    if (props.selectedMediaKind === 'audio') {
+    if (selectedTargetKind.value === 'audio') {
       emit('updateSelectedJob', { audioFormat: value })
       return
     }
@@ -129,6 +141,62 @@ const selectedTarget = computed({
     emit('updateSelectedJob', { videoFormat: value })
   }
 })
+
+function selectValue(value: unknown) {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (value && typeof value === 'object' && 'value' in value) {
+    return String((value as { value: unknown }).value)
+  }
+
+  return String(value)
+}
+
+function onSelectedGifLoaded(event: Event) {
+  selectedGifPreviewVideo.value = event.target as HTMLVideoElement
+  emit('loadedGifMetadata', event)
+}
+
+function setSelectedGifStartFromPreview(event: Event) {
+  if (!props.selectedJob?.gif) {
+    return
+  }
+
+  const video = event.target as HTMLVideoElement
+  emit('updateSelectedJob', {
+    gif: {
+      ...props.selectedJob.gif,
+      startSeconds: Number(video.currentTime.toFixed(2))
+    }
+  })
+}
+
+function setSelectedGifEndFromPreview(event: Event) {
+  if (!props.selectedJob?.gif) {
+    return
+  }
+
+  const video = event.target as HTMLVideoElement
+  const endSeconds = Number(video.currentTime.toFixed(2))
+  if (endSeconds <= props.selectedJob.gif.startSeconds + 0.1) {
+    return
+  }
+
+  emit('updateSelectedJob', {
+    gif: {
+      ...props.selectedJob.gif,
+      durationSeconds: Number((endSeconds - props.selectedJob.gif.startSeconds).toFixed(2))
+    }
+  })
+}
+
+function jumpSelectedGifPreviewToStart() {
+  if (selectedGifPreviewVideo.value && props.selectedJob?.gif) {
+    selectedGifPreviewVideo.value.currentTime = props.selectedJob.gif.startSeconds
+  }
+}
 
 function basename(path: string) {
   return path.split(/[\\/]/).pop() || path
@@ -279,7 +347,7 @@ function toPresetCopyKey(id: string) {
               :items="selectedModeOptions"
               option-attribute="label"
               value-attribute="value"
-              @update:model-value="emit('updateSelectedJob', { mode: String($event) })"
+              @update:model-value="emit('updateSelectedJob', { mode: selectValue($event) })"
             />
           </UFormField>
 
@@ -289,7 +357,7 @@ function toPresetCopyKey(id: string) {
               :items="presetItems"
               option-attribute="label"
               value-attribute="value"
-              @update:model-value="emit('updateSelectedJob', { presetId: String($event) })"
+              @update:model-value="emit('updateSelectedJob', { presetId: selectValue($event) })"
             />
           </UFormField>
 
@@ -301,7 +369,7 @@ function toPresetCopyKey(id: string) {
           </UFormField>
 
           <UFormField
-            v-if="selectedJob.mode !== 'gif' && selectedMediaKind !== 'audio'"
+            v-if="selectedJob.mode !== 'gif' && selectedJob.mode !== 'extract-audio' && selectedMediaKind !== 'audio'"
             :label="ui.job.resizeLongEdge"
           >
             <UInputNumber
@@ -325,41 +393,116 @@ function toPresetCopyKey(id: string) {
 
         <div
           v-if="selectedJob.mode === 'gif' && selectedJob.gif"
-          class="grid gap-4 lg:grid-cols-4"
+          class="space-y-4"
         >
-          <UFormField :label="ui.job.start">
-            <UInputNumber
-              :model-value="selectedJob.gif.startSeconds"
-              :min="0"
-              :step="0.5"
-              @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, startSeconds: Number($event) } })"
+          <div
+            v-if="selectedGifVideoSrc"
+            class="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3"
+          >
+            <video
+              class="block aspect-video max-w-full rounded-lg border border-white/10 bg-black object-contain"
+              :src="selectedGifVideoSrc"
+              controls
+              preload="metadata"
+              @loadedmetadata="onSelectedGifLoaded"
+              @play="setSelectedGifStartFromPreview"
+              @pause="setSelectedGifEndFromPreview"
+              @error="emit('previewGifError')"
             />
-          </UFormField>
-          <UFormField :label="ui.job.duration">
-            <UInputNumber
-              :model-value="selectedJob.gif.durationSeconds"
-              :min="0.5"
-              :step="0.5"
-              @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, durationSeconds: Number($event) } })"
-            />
-          </UFormField>
-          <UFormField :label="ui.job.fps">
-            <UInputNumber
-              :model-value="selectedJob.gif.fps"
-              :min="1"
-              :max="30"
-              @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, fps: Number($event) } })"
-            />
-          </UFormField>
-          <UFormField :label="ui.job.width">
-            <UInputNumber
-              :model-value="selectedJob.gif.width"
-              :min="160"
-              :max="1280"
-              :step="20"
-              @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, width: Number($event) } })"
-            />
-          </UFormField>
+            <div
+              v-if="gifPreviewError"
+              class="rounded-lg border border-amber-500/20 bg-amber-500/8 p-3"
+            >
+              <p class="text-sm leading-6 text-amber-200">
+                {{ gifPreviewError }}
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-play"
+                :disabled="Boolean(gifPreviewError) || !selectedGifPreviewVideo"
+                @click="selectedGifPreviewVideo?.play()"
+              >
+                {{ ui.gif.playPreview }}
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-pause"
+                :disabled="Boolean(gifPreviewError) || !selectedGifPreviewVideo"
+                @click="selectedGifPreviewVideo?.pause()"
+              >
+                {{ ui.gif.pausePreview }}
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-skip-back"
+                :disabled="Boolean(gifPreviewError) || !selectedGifPreviewVideo"
+                @click="jumpSelectedGifPreviewToStart"
+              >
+                {{ ui.gif.jumpStart }}
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-monitor-play"
+                @click="emit('openSelectedGifExternal', selectedJob.inputPath)"
+              >
+                {{ ui.gif.openExternal }}
+              </UButton>
+              <p class="text-xs leading-6 text-stone-400">
+                {{ ui.gif.videoLength }}: {{ selectedGifVideoDuration ? `${selectedGifVideoDuration.toFixed(1)}s` : ui.gif.loading }}
+              </p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-4">
+            <UFormField :label="ui.job.start">
+              <UInputNumber
+                :model-value="selectedJob.gif.startSeconds"
+                :min="0"
+                :step="0.5"
+                @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, startSeconds: Number($event) } })"
+              />
+            </UFormField>
+            <UFormField :label="ui.job.duration">
+              <UInputNumber
+                :model-value="selectedJob.gif.durationSeconds"
+                :min="0.5"
+                :step="0.5"
+                @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, durationSeconds: Number($event) } })"
+              />
+            </UFormField>
+            <UFormField :label="ui.job.fps">
+              <UInputNumber
+                :model-value="selectedJob.gif.fps"
+                :min="1"
+                :max="30"
+                @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, fps: Number($event) } })"
+              />
+            </UFormField>
+            <UFormField :label="ui.job.width">
+              <UInputNumber
+                :model-value="selectedJob.gif.width"
+                :min="160"
+                :max="1280"
+                :step="20"
+                @update:model-value="emit('updateSelectedJob', { gif: { ...selectedJob.gif!, width: Number($event) } })"
+              />
+            </UFormField>
+          </div>
+
+          <UButton
+            block
+            color="primary"
+            icon="i-lucide-plus"
+            @click="emit('addSelectedGifJob')"
+          >
+            {{ ui.job.addGifJob }}
+          </UButton>
         </div>
       </div>
       <div

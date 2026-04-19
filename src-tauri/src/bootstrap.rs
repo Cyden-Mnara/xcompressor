@@ -40,7 +40,7 @@ fn bootstrap_data() -> AppBootstrap {
             MediaCapability {
                 kind: "video",
                 compression_modes: vec!["CRF compression", "bitrate target", "resize + compress"],
-                conversions: vec!["mp4 -> webm", "mov -> mp4", "mkv -> mp4"],
+                conversions: vec!["mp4 -> webm", "mov -> mp4", "mkv -> mp4", "mp4 -> mp3"],
             },
             MediaCapability {
                 kind: "image",

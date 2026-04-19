@@ -273,7 +273,7 @@ const guideDictionary: Record<GuideLanguage, GuideCopy> = {
 const appUiDictionary = {
   'en-US': {
     media: { video: 'Video', image: 'Image', audio: 'Audio', unknown: 'Unknown', media: 'Media' },
-    modes: { compress: 'Compress', convert: 'Convert', gif: 'Create GIF' },
+    modes: { 'compress': 'Compress', 'convert': 'Convert', 'extract-audio': 'Extract audio', 'gif': 'Create GIF' },
     status: { queued: 'queued', progress: 'progress', running: 'running', completed: 'completed', success: 'success', failed: 'failed', cancelled: 'cancelled', skipped: 'skipped' },
     toolbar: { work: 'Work', development: 'Development', note: 'One job runs at a time to keep the machine responsive.', checkUpdates: 'Check updates' },
     drag: { title: 'Drop files to add them to the queue', body: 'Videos, images, and audio get default settings that you can edit per file.' },
@@ -293,18 +293,18 @@ const appUiDictionary = {
       cancelRunning: 'Cancel running batch', gifClipRequired: 'Add at least one GIF clip before running export.',
       activityDefaults: 'Each queued file can keep these defaults or use its own settings.', selectedSettings: 'Selected file settings',
       mode: 'Mode', preset: 'Preset', target: 'target', resizeLongEdge: 'Resize long edge', outputDirectory: 'Output directory',
-      start: 'Start', duration: 'Duration', fps: 'FPS', width: 'Width',
+      start: 'Start', duration: 'Duration', fps: 'FPS', width: 'Width', addGifJob: 'Add GIF job',
       selectQueued: 'Select a queued file to adjust its mode, format, resize, or output directory.'
     },
     queue: {
       title: 'Source queue', skippedGif: 'skipped in gif mode', skippedGifBody: 'This file stays in the queue, but GIF export only runs on video inputs.',
-      speed: 'Speed', remove: 'Remove', removeClip: 'Remove clip', emptyTitle: 'No media queued',
+      speed: 'Speed', open: 'Open', remove: 'Remove', removeClip: 'Remove clip', emptyTitle: 'No media queued',
       emptyDescription: 'Drag files here or use Add media. Each file gets default settings you can edit after selecting it.', edge: 'edge'
     },
     gif: {
       title: 'GIF editor', subtitle: 'Preview and clip ranges', clipsQueued: 'clips queued', previewSource: 'Preview source',
       previewDescription: 'Choose the video you want to clip from.', openSystem: 'Open in system player', jumpStart: 'Jump to clip start',
-      openExternal: 'Open externally', videoLength: 'Video length', loading: 'loading...', clipRange: 'Clip range', start: 'Start', end: 'End',
+      openExternal: 'Open externally', playPreview: 'Play', pausePreview: 'Pause', videoLength: 'Video length', loading: 'loading...', clipRange: 'Clip range', start: 'Start', end: 'End',
       noPreviewTitle: 'No video selected for preview', noPreviewDescription: 'Add at least one video file to start building GIF clips.',
       startSecond: 'Start second', startSecondDescription: 'Where the clip begins inside the source video.', endSecond: 'End second',
       endSecondDescription: 'Where the clip stops inside the source video.', fpsDescription: 'Higher FPS is smoother but creates a larger file.',
@@ -321,7 +321,7 @@ const appUiDictionary = {
       jobsFinished: 'jobs finished.', cancellation: 'Cancellation requested. Active FFmpeg jobs are being stopped.'
     },
     output: {
-      title: 'Batch output', subtitle: 'Results', successful: 'successful', output: 'Output', args: 'ffmpeg args',
+      title: 'Batch output', subtitle: 'Results', successful: 'successful', output: 'Output', open: 'Open', args: 'ffmpeg args',
       emptyTitle: 'No jobs have run yet', emptyDescription: 'Per-job results appear here while the workspace stays focused on setup in the center pane.'
     },
     updates: {
@@ -343,12 +343,13 @@ const appUiDictionary = {
       everythingCompleted: 'Everything in the queue has already completed.', updateFailed: 'Update check failed',
       updateInstalled: 'Update installed', updateReadySuffix: 'is available', upToDate: 'xcompressor is up to date',
       updaterNotConfigured: 'Updater not configured', install: 'Install', queuedJob: 'Queued job.',
-      queuedGif: 'Queued GIF clip for batch processing.', queuedBatch: 'Queued for batch processing.', batchError: 'Batch error'
+      queuedGif: 'Queued GIF clip for batch processing.', queuedBatch: 'Queued for batch processing.', batchError: 'Batch error',
+      gifJobAdded: 'GIF job added'
     }
   },
   'sw-TZ': {
     media: { video: 'Video', image: 'Picha', audio: 'Sauti', unknown: 'Haijulikani', media: 'Media' },
-    modes: { compress: 'Bana', convert: 'Badili', gif: 'Tengeneza GIF' },
+    modes: { 'compress': 'Bana', 'convert': 'Badili', 'extract-audio': 'Toa sauti', 'gif': 'Tengeneza GIF' },
     status: { queued: 'kwenye foleni', progress: 'inaendelea', running: 'inafanya kazi', completed: 'imekamilika', success: 'imefanikiwa', failed: 'imeshindwa', cancelled: 'imekatishwa', skipped: 'imerukwa' },
     toolbar: { work: 'Kazi', development: 'Maendeleo', note: 'Kazi moja huendeshwa kwa wakati mmoja ili kompyuta ibaki imara.', checkUpdates: 'Angalia masasisho' },
     drag: { title: 'Dondosha faili ili ziongezwe kwenye foleni', body: 'Video, picha, na sauti hupata mipangilio ya kawaida ambayo unaweza kubadilisha kwa kila faili.' },
@@ -368,18 +369,18 @@ const appUiDictionary = {
       cancelRunning: 'Sitisha batch inayoendelea', gifClipRequired: 'Ongeza angalau kipande kimoja cha GIF kabla ya kuendesha.',
       activityDefaults: 'Kila faili kwenye foleni inaweza kutumia mipangilio hii au yake binafsi.', selectedSettings: 'Mipangilio ya faili iliyochaguliwa',
       mode: 'Mode', preset: 'Preset', target: 'lengo', resizeLongEdge: 'Badili upande mrefu', outputDirectory: 'Folda ya kuhifadhi',
-      start: 'Mwanzo', duration: 'Muda', fps: 'FPS', width: 'Upana',
+      start: 'Mwanzo', duration: 'Muda', fps: 'FPS', width: 'Upana', addGifJob: 'Ongeza kazi ya GIF',
       selectQueued: 'Chagua faili kwenye foleni kubadilisha mode, fomati, ukubwa, au folda ya kuhifadhi.'
     },
     queue: {
       title: 'Foleni ya chanzo', skippedGif: 'itarukwa kwenye GIF mode', skippedGifBody: 'Faili hii inabaki kwenye foleni, lakini GIF hutengenezwa kwa video pekee.',
-      speed: 'Kasi', remove: 'Ondoa', removeClip: 'Ondoa kipande', emptyTitle: 'Hakuna media kwenye foleni',
+      speed: 'Kasi', open: 'Fungua', remove: 'Ondoa', removeClip: 'Ondoa kipande', emptyTitle: 'Hakuna media kwenye foleni',
       emptyDescription: 'Dondosha faili hapa au tumia Ongeza media. Kila faili hupata mipangilio unayoweza kubadilisha baada ya kuichagua.', edge: 'upande'
     },
     gif: {
       title: 'Kihariri cha GIF', subtitle: 'Hakiki na kata vipande', clipsQueued: 'vipande kwenye foleni', previewSource: 'Chanzo cha hakiki',
       previewDescription: 'Chagua video unayotaka kukata.', openSystem: 'Fungua kwenye player ya mfumo', jumpStart: 'Ruka hadi mwanzo wa kipande',
-      openExternal: 'Fungua nje', videoLength: 'Urefu wa video', loading: 'inapakia...', clipRange: 'Kipande', start: 'Mwanzo', end: 'Mwisho',
+      openExternal: 'Fungua nje', playPreview: 'Cheza', pausePreview: 'Sitisha', videoLength: 'Urefu wa video', loading: 'inapakia...', clipRange: 'Kipande', start: 'Mwanzo', end: 'Mwisho',
       noPreviewTitle: 'Hakuna video iliyochaguliwa kwa hakiki', noPreviewDescription: 'Ongeza angalau video moja kuanza kutengeneza vipande vya GIF.',
       startSecond: 'Sekunde ya mwanzo', startSecondDescription: 'Mahali kipande kinaanza ndani ya video.', endSecond: 'Sekunde ya mwisho',
       endSecondDescription: 'Mahali kipande kinaishia ndani ya video.', fpsDescription: 'FPS kubwa ni laini zaidi lakini huongeza ukubwa wa faili.',
@@ -396,7 +397,7 @@ const appUiDictionary = {
       jobsFinished: 'kazi zimekamilika.', cancellation: 'Ombi la kusitisha limetumwa. Kazi za FFmpeg zinasimamishwa.'
     },
     output: {
-      title: 'Matokeo ya batch', subtitle: 'Matokeo', successful: 'zimefanikiwa', output: 'Matokeo', args: 'hoja za ffmpeg',
+      title: 'Matokeo ya batch', subtitle: 'Matokeo', successful: 'zimefanikiwa', output: 'Matokeo', open: 'Fungua', args: 'hoja za ffmpeg',
       emptyTitle: 'Hakuna kazi iliyoendeshwa bado', emptyDescription: 'Matokeo ya kila kazi yataonekana hapa huku eneo la kazi likibaki kwenye usanidi.'
     },
     updates: {
@@ -418,7 +419,8 @@ const appUiDictionary = {
       everythingCompleted: 'Kila kitu kwenye foleni tayari kimekamilika.', updateFailed: 'Ukaguzi wa sasisho umeshindwa',
       updateInstalled: 'Sasisho limesakinishwa', updateReadySuffix: 'linapatikana', upToDate: 'xcompressor iko toleo la sasa',
       updaterNotConfigured: 'Updater haijasanidiwa', install: 'Sakinisha', queuedJob: 'Kazi imewekwa kwenye foleni.',
-      queuedGif: 'Kipande cha GIF kimewekwa kwenye foleni.', queuedBatch: 'Imewekwa kwenye foleni ya batch.', batchError: 'Hitilafu ya batch'
+      queuedGif: 'Kipande cha GIF kimewekwa kwenye foleni.', queuedBatch: 'Imewekwa kwenye foleni ya batch.', batchError: 'Hitilafu ya batch',
+      gifJobAdded: 'Kazi ya GIF imeongezwa'
     }
   }
 }
@@ -887,7 +889,7 @@ function updateSelectedQueueJob(patch: Partial<MixedJob>) {
       nextJob.outputSuffix = `gif-${Date.now().toString(36)}`
     }
 
-    nextJob.resizeLongEdge = nextJob.mode === 'gif' || mediaKind === 'audio'
+    nextJob.resizeLongEdge = nextJob.mode === 'gif' || nextJob.mode === 'extract-audio' || mediaKind === 'audio'
       ? null
       : nextJob.resizeLongEdge
     nextJob.label = `${basename(nextJob.inputPath)} • ${nextJob.mode}`
@@ -932,7 +934,7 @@ function makeDefaultQueueJob(path: string): MixedJob {
     audioFormat: audioFormat.value,
     jobId: queueJobId(path),
     label: `${basename(path)} • ${nextMode}`,
-    resizeLongEdge: nextMode === 'gif' || mediaKind === 'audio' ? null : resizeLongEdge.value,
+    resizeLongEdge: nextMode === 'gif' || nextMode === 'extract-audio' || mediaKind === 'audio' ? null : resizeLongEdge.value,
     gif: defaultGifForPath(path),
     outputSuffix: nextMode === 'gif' ? `gif-${Date.now().toString(36)}` : null,
     overwrite: true
@@ -1379,6 +1381,12 @@ function buildGifSegmentSuffix(index: number) {
   return `gif-${String(index + 1).padStart(2, '0')}`
 }
 
+function nextGifJobIndex(inputPath: string) {
+  const segmentCount = gifSegments.value.filter(segment => segment.inputPath === inputPath).length
+  const activityCount = activityQueue.value.filter(job => job.inputPath === inputPath && job.mode === 'gif').length
+  return segmentCount + activityCount
+}
+
 function addGifSegment() {
   if (!selectedGifVideo.value) {
     return
@@ -1406,6 +1414,33 @@ function addGifSegment() {
 
 function removeGifSegment(jobId: string) {
   gifSegments.value = gifSegments.value.filter(segment => segment.jobId !== jobId)
+}
+
+function addSelectedGifJob() {
+  const job = selectedQueueJob.value
+  if (!job || job.mode !== 'gif' || !job.gif) {
+    return
+  }
+
+  const segmentIndex = nextGifJobIndex(job.inputPath)
+  const outputSuffix = buildGifSegmentSuffix(segmentIndex)
+  const nextJob = {
+    ...job,
+    jobId: `mixed::${job.inputPath}::gif::${segmentIndex}::${job.gif.startSeconds}::${job.gif.durationSeconds}::${Date.now().toString(36)}`,
+    label: buildGifSegmentLabel(job.inputPath, segmentIndex),
+    gif: { ...job.gif },
+    outputSuffix
+  } satisfies MixedJob
+
+  activityQueue.value = [...activityQueue.value, nextJob]
+  selectedQueueJobId.value = nextJob.jobId
+  toast.add({
+    title: appUi.value.toast.gifJobAdded,
+    description: nextJob.label,
+    icon: 'i-lucide-plus',
+    color: 'success',
+    duration: 4000
+  })
 }
 
 function makeActivityJobBase(inputPath: string, nextMode: string) {
@@ -1438,7 +1473,7 @@ function addCurrentActivity() {
         videoFormat: videoFormat.value,
         imageFormat: imageFormat.value,
         audioFormat: audioFormat.value,
-        resizeLongEdge: nextMode === 'gif' || mediaKind === 'audio' ? null : resizeLongEdge.value,
+        resizeLongEdge: nextMode === 'gif' || nextMode === 'extract-audio' || mediaKind === 'audio' ? null : resizeLongEdge.value,
         gif: nextMode === 'gif' && mediaKind === 'video'
           ? {
               startSeconds: gifOptions.startSeconds,
@@ -1487,7 +1522,7 @@ function addCurrentActivity() {
     ...makeActivityJobBase(path, mode.value),
     jobId: `mixed::${mode.value}::${path}`,
     label: `${basename(path)} • ${mode.value}`,
-    resizeLongEdge: resizeLongEdge.value,
+    resizeLongEdge: mode.value === 'extract-audio' ? null : resizeLongEdge.value,
     gif: null,
     outputSuffix: null
   } satisfies MixedJob))
@@ -1661,7 +1696,7 @@ async function runBatch() {
         videoFormat: videoFormat.value,
         imageFormat: imageFormat.value,
         audioFormat: audioFormat.value,
-        resizeLongEdge: mode.value === 'gif' ? null : resizeLongEdge.value,
+        resizeLongEdge: mode.value === 'gif' || mode.value === 'extract-audio' ? null : resizeLongEdge.value,
         maxParallelJobs: maxParallelJobs.value,
         gif: {
           startSeconds: gifOptions.startSeconds,
@@ -1727,6 +1762,14 @@ async function openSelectedGifVideoInSystemPlayer() {
   await tauriInvoke('open_media_in_system_player', { path: selectedGifVideo.value })
 }
 
+async function openOutputInSystemPlayer(path: string) {
+  if (!path) {
+    return
+  }
+
+  await tauriInvoke('open_media_in_system_player', { path })
+}
+
 onMounted(() => {
   desktopRuntime.value = isTauriRuntime()
   if (!desktopRuntime.value) {
@@ -1786,6 +1829,19 @@ watch(videoFiles, async () => {
 
 watch(selectedGifVideo, async () => {
   if (desktopRuntime.value !== true) {
+    return
+  }
+
+  await updateSelectedGifVideoSrc()
+})
+
+watch(() => selectedQueueJob.value?.mode === 'gif' ? selectedQueueJob.value.inputPath : '', async (inputPath) => {
+  if (desktopRuntime.value !== true || !inputPath || detectKind(inputPath) !== 'video') {
+    return
+  }
+
+  if (selectedGifVideo.value !== inputPath) {
+    selectedGifVideo.value = inputPath
     return
   }
 
@@ -2149,6 +2205,9 @@ function onGifVideoError() {
             :can-run="canRun"
             :selected-job="selectedQueueJob"
             :selected-media-kind="selectedQueueMediaKind"
+            :selected-gif-video-src="selectedQueueJob?.mode === 'gif' ? selectedGifVideoSrc : ''"
+            :selected-gif-video-duration="selectedQueueJob?.mode === 'gif' ? selectedGifVideoDuration : 0"
+            :gif-preview-error="gifPreviewError"
             @pick-files="pickFiles"
             @pick-output-dir="pickOutputDir"
             @clear-queue="clearQueue"
@@ -2156,6 +2215,10 @@ function onGifVideoError() {
             @run-batch="runBatch"
             @cancel-batch="cancelBatch"
             @update-selected-job="updateSelectedQueueJob"
+            @add-selected-gif-job="addSelectedGifJob"
+            @loaded-gif-metadata="onGifVideoLoaded"
+            @preview-gif-error="onGifVideoError"
+            @open-selected-gif-external="openOutputInSystemPlayer"
           />
 
           <GifEditor
@@ -2227,6 +2290,7 @@ function onGifVideoError() {
             @remove-gif-segment="removeGifSegment"
             @remove-activity-job="removeActivityJob"
             @select-activity-job="selectedQueueJobId = $event"
+            @open-output="openOutputInSystemPlayer"
           />
         </aside>
       </div>
@@ -2278,7 +2342,10 @@ function onGifVideoError() {
             />
           </div>
           <div class="mt-4">
-            <BatchOutput :results="results" />
+            <BatchOutput
+              :results="results"
+              @open-output="openOutputInSystemPlayer"
+            />
           </div>
         </main>
       </div>

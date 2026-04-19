@@ -77,6 +77,7 @@ export default defineNuxtConfig({
         'lucide:monitor-play',
         'lucide:moon',
         'lucide:music',
+        'lucide:pause',
         'lucide:play',
         'lucide:plus',
         'lucide:refresh-ccw',

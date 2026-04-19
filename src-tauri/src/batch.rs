@@ -378,6 +378,7 @@ fn estimate_job_resources(
     let (base_memory_mb, seconds_factor) = match (media_kind.as_str(), operation) {
         ("video", "compress") => (700.0, 1.25),
         ("video", "convert") => (620.0, 1.05),
+        ("video", "extract-audio") => (180.0, 0.25),
         ("video", "gif") => (900.0, 1.6),
         ("image", "compress") => (180.0, 0.18),
         ("image", "convert") => (160.0, 0.12),
@@ -606,8 +607,8 @@ fn probe_duration_seconds(app: &AppHandle, input_path: &Path) -> Option<f64> {
             ])
             .arg(input_path),
     )
-        .output()
-        .ok()?;
+    .output()
+    .ok()?;
 
     if !output.status.success() {
         return None;
@@ -1064,9 +1065,15 @@ fn process_single_job(
             build_gif_args(&input, &output_path, &gif),
         )
     } else {
-        let target = format_choice_for_kind(request, &media_kind);
+        let target = if mode == "extract-audio" {
+            format_choice_for_kind(request, "audio")
+        } else {
+            format_choice_for_kind(request, &media_kind)
+        };
         let suffix = if mode == "convert" {
             "-converted"
+        } else if mode == "extract-audio" {
+            "-audio"
         } else {
             "-compressed"
         };
@@ -1104,10 +1111,11 @@ fn process_single_job(
             }
         };
 
-        let args = match media_kind.as_str() {
-            "video" => build_video_args(&input, &output_path, request, &profile),
-            "audio" => build_audio_args(&input, &output_path, request, &profile),
-            "image" => build_image_args(&input, &output_path, request, &profile),
+        let args = match (media_kind.as_str(), mode.as_str()) {
+            ("video", "extract-audio") => build_audio_args(&input, &output_path, request, &profile),
+            ("video", _) => build_video_args(&input, &output_path, request, &profile),
+            ("audio", _) => build_audio_args(&input, &output_path, request, &profile),
+            ("image", _) => build_image_args(&input, &output_path, request, &profile),
             _ => Err("Unsupported media kind.".into()),
         };
 

@@ -17,6 +17,9 @@ type BatchJobResult = {
 defineProps<{
   results: BatchJobResult[]
 }>()
+const emit = defineEmits<{
+  openOutput: [path: string]
+}>()
 const appUi = inject('appUi') as AppUiInjection
 const ui = computed(() => appUi.value)
 
@@ -82,6 +85,18 @@ function basename(path: string) {
         >
           {{ ui.output.output }}: {{ basename(result.outputPath) }}
         </p>
+
+        <UButton
+          v-if="result.success && result.outputPath"
+          class="mt-3"
+          color="neutral"
+          variant="soft"
+          size="sm"
+          icon="i-lucide-monitor-play"
+          @click="emit('openOutput', result.outputPath)"
+        >
+          {{ ui.output.open }}
+        </UButton>
 
         <details
           v-if="result.ffmpegArgs.length"
