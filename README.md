@@ -1,4 +1,4 @@
-# xcompressor
+# Xcompressor
 
 Tauri + Rust desktop application scaffold for batch multimedia compression.
 
@@ -22,7 +22,7 @@ Tauri + Rust desktop application scaffold for batch multimedia compression.
 
 ## Credits and support
 
-xcompressor is built on FFmpeg and the wider open source multimedia ecosystem. The app includes static pages for:
+Xcompressor is built on FFmpeg and the wider open source multimedia ecosystem. The app includes static pages for:
 
 - `/credits` - acknowledgements for FFmpeg developers and open source contributors
 - `/support` - non-financial ways to support the project
@@ -31,7 +31,7 @@ Financial support is not currently enabled. Keep donation and sponsorship links 
 
 If release builds bundle FFmpeg binaries, also publish the matching FFmpeg source, license notices, and build details required for the exact binaries you distribute. Start with the official FFmpeg legal guidance: https://ffmpeg.org/legal.html
 
-Future donations, if enabled, should be optional support for xcompressor maintenance only. They must not be presented as payment for FFmpeg, codec licenses, patent rights, warranty, private support, or ownership rights.
+Future donations, if enabled, should be optional support for Xcompressor maintenance only. They must not be presented as payment for FFmpeg, codec licenses, patent rights, warranty, private support, or ownership rights.
 
 ## Run
 

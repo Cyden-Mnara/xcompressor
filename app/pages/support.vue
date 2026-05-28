@@ -1,8 +1,8 @@
 <script setup lang="ts">
-const seoTitle = 'Support xcompressor | Keep the Project Alive'
-const seoDescription = 'Support xcompressor development, maintenance, testing, documentation, and open source multimedia tooling.'
+const seoTitle = 'Support Xcompressor | Keep the Project Alive'
+const seoDescription = 'Support Xcompressor development, maintenance, testing, documentation, and open source multimedia tooling.'
 const seoKeywords = [
-  'support xcompressor',
+  'support Xcompressor',
   'contribute to open source',
   'support FFmpeg app',
   'open source video compressor',
@@ -55,10 +55,10 @@ useSeoMeta({
           Support
         </p>
         <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-          Help keep xcompressor alive.
+          Help keep Xcompressor alive.
         </h1>
         <p class="mt-5 max-w-3xl text-base leading-7 text-stone-300">
-          Financial support is not available yet. You can still help xcompressor by testing releases, reporting bugs, improving documentation, and sharing feedback from real media workflows.
+          Financial support is not available yet. You can still help Xcompressor by testing releases, reporting bugs, improving documentation, and sharing feedback from real media workflows.
         </p>
         <div class="mt-6 flex flex-wrap gap-3">
           <UButton
@@ -113,7 +113,7 @@ useSeoMeta({
           Support Policy
         </h2>
         <p class="mt-4 text-sm leading-6 text-stone-300">
-          Future financial support options, if added, will support xcompressor maintenance only. Support will not be payment for FFmpeg, codecs, patent licenses, warranty, private support, priority fixes, or ownership rights. FFmpeg remains an independent open source project with its own licenses and maintainers.
+          Future financial support options, if added, will support Xcompressor maintenance only. Support will not be payment for FFmpeg, codecs, patent licenses, warranty, private support, priority fixes, or ownership rights. FFmpeg remains an independent open source project with its own licenses and maintainers.
         </p>
       </section>
 

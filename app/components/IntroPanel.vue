@@ -97,7 +97,7 @@ function toPresetCopyKey(id: string) {
         </div>
         <div>
           <h1 class="text-3xl font-semibold tracking-tight text-white">
-            xcompressor
+            Xcompressor
           </h1>
           <p class="mt-2 text-sm leading-6 text-stone-300">
             {{ guideCopy.introBody }}

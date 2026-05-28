@@ -22,6 +22,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 use sysinfo::System;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use tauri::Emitter;
 use tauri::{Manager, WindowEvent};
 
 #[derive(Debug, Clone, Serialize)]
@@ -236,18 +238,98 @@ struct AppUpdateStatus {
 
 struct AppState {
     batch_runs: Arc<Mutex<HashMap<String, Arc<BatchRunControl>>>>,
+    pending_open_paths: Arc<Mutex<Vec<String>>>,
     preview_server: MediaPreviewServer,
     system: Arc<Mutex<System>>,
 }
 
+fn unique_paths(paths: Vec<String>) -> Vec<String> {
+    paths.into_iter().fold(Vec::new(), |mut unique, path| {
+        if !unique.contains(&path) {
+            unique.push(path);
+        }
+        unique
+    })
+}
+
+fn open_path_from_path_buf(path: PathBuf) -> Option<String> {
+    path.is_file().then(|| path.to_string_lossy().into_owned())
+}
+
+fn open_path_from_arg(arg: OsString) -> Option<String> {
+    if let Some(path) = open_path_from_path_buf(PathBuf::from(&arg)) {
+        return Some(path);
+    }
+
+    let raw_arg = arg.to_string_lossy();
+    let url = url::Url::parse(&raw_arg).ok()?;
+
+    if url.scheme() != "file" {
+        return None;
+    }
+
+    url.to_file_path().ok().and_then(open_path_from_path_buf)
+}
+
+fn startup_open_paths() -> Vec<String> {
+    unique_paths(std::env::args_os().skip(1).filter_map(open_path_from_arg).collect())
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn queue_open_paths<R: tauri::Runtime>(app: &tauri::AppHandle<R>, paths: Vec<String>) {
+    let paths = unique_paths(paths);
+
+    if paths.is_empty() {
+        return;
+    }
+
+    let state = app.state::<AppState>();
+    if let Ok(mut pending_open_paths) = state.pending_open_paths.lock() {
+        for path in &paths {
+            if !pending_open_paths.contains(path) {
+                pending_open_paths.push(path.clone());
+            }
+        }
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
+    let _ = app.emit("native-open-files", paths);
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn open_paths_from_urls(urls: Vec<url::Url>) -> Vec<String> {
+    unique_paths(
+        urls.into_iter()
+            .filter(|url| url.scheme() == "file")
+            .filter_map(|url| url.to_file_path().ok())
+            .filter_map(open_path_from_path_buf)
+            .collect(),
+    )
+}
+
+#[tauri::command]
+fn take_pending_open_paths(state: tauri::State<AppState>) -> Vec<String> {
+    state
+        .pending_open_paths
+        .lock()
+        .map(|mut pending_open_paths| pending_open_paths.drain(..).collect())
+        .unwrap_or_default()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let pending_open_paths = startup_open_paths();
     let preview_server =
         preview::start_media_preview_server().expect("failed to start local media preview server");
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .manage(AppState {
             batch_runs: Arc::new(Mutex::new(HashMap::new())),
+            pending_open_paths: Arc::new(Mutex::new(pending_open_paths)),
             preview_server,
             system: Arc::new(Mutex::new(System::new_all())),
         })
@@ -262,6 +344,7 @@ pub fn run() {
             preview::get_media_preview_url,
             updater::check_for_app_update,
             updater::install_app_update,
+            take_pending_open_paths,
             batch::cancel_batch_run,
             batch::run_batch_jobs
         ])
@@ -281,6 +364,13 @@ pub fn run() {
                 cancel_active_batch_runs(&state.batch_runs);
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|_app_handle, _event| {
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        if let tauri::RunEvent::Opened { urls } = _event {
+            queue_open_paths(_app_handle, open_paths_from_urls(urls));
+        }
+    });
 }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "xcompressor",
+  "productName": "Xcompressor",
   "version": "0.1.10",
   "identifier": "com.xmnara.xcompressor",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "xcompressor",
+        "title": "Xcompressor",
         "width": 1280,
         "height": 860,
         "minWidth": 1080,

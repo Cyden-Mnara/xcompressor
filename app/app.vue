@@ -11,7 +11,7 @@ useHead({
   }
 })
 
-const title = 'xcompressor'
+const title = 'Xcompressor'
 const description = 'Desktop workspace for multimedia compression, conversion, and GIF generation.'
 
 useSeoMeta({

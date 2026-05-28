@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`xcompressor` is a desktop tool for batch multimedia processing. It supports:
+Xcompressor is a desktop tool for batch multimedia processing. It supports:
 
 - video compression
 - image compression

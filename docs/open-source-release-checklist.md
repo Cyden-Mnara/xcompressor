@@ -1,10 +1,10 @@
 # Open Source Release Checklist
 
-This checklist is for publishing xcompressor as an open source project. It is not legal advice.
+This checklist is for publishing Xcompressor as an open source project. It is not legal advice.
 
 ## Project license
 
-- Choose a license for xcompressor itself before publishing.
+- Choose a license for Xcompressor itself before publishing.
 - Add a root `LICENSE` file.
 - Make sure every dependency license is compatible with the way the app is distributed.
 - Keep third-party notices visible in the repository and in release artifacts where required.
@@ -12,7 +12,7 @@ This checklist is for publishing xcompressor as an open source project. It is no
 
 ## FFmpeg release compliance
 
-xcompressor uses FFmpeg as an external command-line tool. Release builds may bundle `ffmpeg` and `ffprobe`, so every public download must be matched with the exact FFmpeg source and license information for those binaries.
+Xcompressor uses FFmpeg as an external command-line tool. Release builds may bundle `ffmpeg` and `ffprobe`, so every public download must be matched with the exact FFmpeg source and license information for those binaries.
 
 Before publishing a release that bundles FFmpeg:
 
@@ -30,7 +30,7 @@ Recommended release artifact layout:
 
 ```text
 release/
-  xcompressor-<version>-<platform>.<installer>
+  Xcompressor-<version>-<platform>.<installer>
   ffmpeg-source-<ffmpeg-version>.zip
   ffmpeg-build-info.txt
   ffmpeg-changes.diff

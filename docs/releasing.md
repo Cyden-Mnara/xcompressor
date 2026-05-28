@@ -2,7 +2,7 @@
 
 ## Overview
 
-`xcompressor` publishes desktop releases from Git tags that match `v*`.
+Xcompressor publishes desktop releases from Git tags that match `v*`.
 
 The release workflow:
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-const seoTitle = 'Credits and Open Source Acknowledgements | xcompressor'
-const seoDescription = 'xcompressor credits FFmpeg developers, open source maintainers, translators, testers, and the wider community behind multimedia compression tools.'
+const seoTitle = 'Credits and Open Source Acknowledgements | Xcompressor'
+const seoDescription = 'Xcompressor credits FFmpeg developers, open source maintainers, translators, testers, and the wider community behind multimedia compression tools.'
 const seoKeywords = [
-  'xcompressor credits',
+  'Xcompressor credits',
   'FFmpeg developers',
   'open source multimedia',
   'video compression app',
@@ -49,7 +49,7 @@ useSeoMeta({
           color="primary"
           variant="soft"
         >
-          Support xcompressor
+          Support Xcompressor
         </UButton>
       </nav>
 
@@ -61,7 +61,7 @@ useSeoMeta({
           Built on generous open source work.
         </h1>
         <p class="mt-5 max-w-3xl text-base leading-7 text-stone-300">
-          xcompressor exists because thousands of developers, maintainers, documenters, translators, and testers make multimedia software better in public.
+          Xcompressor exists because thousands of developers, maintainers, documenters, translators, and testers make multimedia software better in public.
         </p>
       </section>
 
@@ -77,7 +77,7 @@ useSeoMeta({
             </h2>
           </div>
           <p class="mt-4 text-sm leading-6 text-stone-300">
-            FFmpeg is the engine that makes reliable video, audio, image, and GIF processing possible across formats and platforms. xcompressor thanks the FFmpeg developers and contributors for their long-running work on codecs, filters, command-line tooling, documentation, and cross-platform builds.
+            FFmpeg is the engine that makes reliable video, audio, image, and GIF processing possible across formats and platforms. Xcompressor thanks the FFmpeg developers and contributors for their long-running work on codecs, filters, command-line tooling, documentation, and cross-platform builds.
           </p>
           <div class="mt-5 flex flex-wrap gap-2">
             <UButton
@@ -140,7 +140,7 @@ useSeoMeta({
           Project Promise
         </h2>
         <p class="mt-4 text-sm leading-6 text-stone-300">
-          xcompressor should remain useful, transparent, respectful of upstream projects, and honest about what it builds on. When this project uses open source work, it should preserve licenses, keep attribution visible, and send fixes upstream whenever practical.
+          Xcompressor should remain useful, transparent, respectful of upstream projects, and honest about what it builds on. When this project uses open source work, it should preserve licenses, keep attribution visible, and send fixes upstream whenever practical.
         </p>
       </section>
 

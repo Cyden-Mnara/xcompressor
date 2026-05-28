@@ -10,7 +10,7 @@ use crate::{
 
 fn bootstrap_data() -> AppBootstrap {
     AppBootstrap {
-        app_name: "xcompressor",
+        app_name: "Xcompressor",
         version: env!("CARGO_PKG_VERSION"),
         summary: "Batch multimedia compression, format conversion, and GIF generation.",
         presets: vec![

@@ -1,6 +1,6 @@
-# Contributing to xcompressor
+# Contributing to Xcompressor
 
-Thanks for helping improve xcompressor. This project aims to be practical, respectful of upstream open source work, and useful for people who need reliable local media compression.
+Thanks for helping improve Xcompressor. This project aims to be practical, respectful of upstream open source work, and useful for people who need reliable local media compression.
 
 ## Ways to contribute
 

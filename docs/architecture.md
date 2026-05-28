@@ -2,7 +2,7 @@
 
 ## Overview
 
-`xcompressor` is a desktop multimedia processing application built with:
+Xcompressor is a desktop multimedia processing application built with:
 
 - `Tauri 2` for the desktop shell
 - `Nuxt 4 + Nuxt UI` for the frontend

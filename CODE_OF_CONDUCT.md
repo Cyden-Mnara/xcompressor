@@ -1,6 +1,6 @@
 # Code of Conduct
 
-The xcompressor community should be useful, respectful, and safe for contributors and users.
+The Xcompressor community should be useful, respectful, and safe for contributors and users.
 
 ## Expected behavior
 

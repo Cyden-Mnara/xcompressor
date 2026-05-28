@@ -341,7 +341,7 @@ const appUiDictionary = {
       completedRemoved: 'Completed jobs removed', completedWasRemoved: 'completed job was removed before rerun.',
       completedWereRemoved: 'completed jobs were removed before rerun.', noPending: 'No pending jobs',
       everythingCompleted: 'Everything in the queue has already completed.', updateFailed: 'Update check failed',
-      updateInstalled: 'Update installed', updateReadySuffix: 'is available', upToDate: 'xcompressor is up to date',
+      updateInstalled: 'Update installed', updateReadySuffix: 'is available', upToDate: 'Xcompressor is up to date',
       updaterNotConfigured: 'Updater not configured', install: 'Install', queuedJob: 'Queued job.',
       queuedGif: 'Queued GIF clip for batch processing.', queuedBatch: 'Queued for batch processing.', batchError: 'Batch error',
       gifJobAdded: 'GIF job added'
@@ -417,7 +417,7 @@ const appUiDictionary = {
       completedRemoved: 'Kazi zilizokamilika zimeondolewa', completedWasRemoved: 'kazi iliyokamilika imeondolewa kabla ya kurudia.',
       completedWereRemoved: 'kazi zilizokamilika zimeondolewa kabla ya kurudia.', noPending: 'Hakuna kazi inayosubiri',
       everythingCompleted: 'Kila kitu kwenye foleni tayari kimekamilika.', updateFailed: 'Ukaguzi wa sasisho umeshindwa',
-      updateInstalled: 'Sasisho limesakinishwa', updateReadySuffix: 'linapatikana', upToDate: 'xcompressor iko toleo la sasa',
+      updateInstalled: 'Sasisho limesakinishwa', updateReadySuffix: 'linapatikana', upToDate: 'Xcompressor iko toleo la sasa',
       updaterNotConfigured: 'Updater haijasanidiwa', install: 'Sakinisha', queuedJob: 'Kazi imewekwa kwenye foleni.',
       queuedGif: 'Kipande cha GIF kimewekwa kwenye foleni.', queuedBatch: 'Imewekwa kwenye foleni ya batch.', batchError: 'Hitilafu ya batch',
       gifJobAdded: 'Kazi ya GIF imeongezwa'
@@ -705,6 +705,7 @@ useHead({
 
 let unlistenBatchProgress: null | (() => void) = null
 let unlistenTauriDragDrop: null | (() => void) = null
+let unlistenNativeOpenFiles: null | (() => void) = null
 let liveMetricsInterval: ReturnType<typeof setInterval> | null = null
 let liveMetricsStartTimer: ReturnType<typeof setTimeout> | null = null
 let resourcePlanRequestId = 0
@@ -1804,7 +1805,9 @@ onMounted(() => {
     void updateGuideTourTarget()
   }
   void registerTauriDragDrop()
+  void registerNativeOpenFilesListener()
   void loadBootstrap().then(() => {
+    void drainNativeOpenPaths()
     void refreshResourcePlan()
   })
   syncSelectedGifVideo()
@@ -1820,6 +1823,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unlistenBatchProgress?.()
   unlistenTauriDragDrop?.()
+  unlistenNativeOpenFiles?.()
   if (import.meta.client) {
     window.removeEventListener('resize', updateGuideTourTarget)
     window.removeEventListener('scroll', updateGuideTourTarget, true)
@@ -1945,7 +1949,7 @@ function onGifVideoError() {
           Desktop app
         </p>
         <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-          xcompressor runs on your desktop.
+          Xcompressor runs on your desktop.
         </h1>
         <p class="mt-5 max-w-2xl text-base leading-7 text-stone-300">
           The compression workspace needs local file access, FFmpeg execution, and Tauri desktop APIs. Use the desktop release to run media jobs locally.

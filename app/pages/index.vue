@@ -2,10 +2,10 @@
 import type { DeviceProfile, DownloadOs, GitHubRelease, OsDownloadCard, ReleaseDownload, ReleaseJson, ReleasePlatform } from '~/types/interfaces'
 import { fileNameFromUrl } from '~/utils/app.autodownloader'
 
-const seoTitle = 'xcompressor | Open Source Media Compression'
-const seoDescription = 'xcompressor is an open source desktop app for local video compression, audio conversion, image optimization, and GIF creation.'
+const seoTitle = 'Xcompressor | Open Source Media Compression'
+const seoDescription = 'Xcompressor is an open source desktop app for local video compression, audio conversion, image optimization, and GIF creation.'
 const seoKeywords = [
-  'xcompressor',
+  'Xcompressor',
   'open source video compressor',
   'desktop media converter',
   'FFmpeg desktop app',
@@ -260,14 +260,14 @@ function startDownload(url: string) {
         <NuxtLink
           to="/"
           class="flex items-center gap-3"
-          aria-label="xcompressor homepage"
+          aria-label="Xcompressor homepage"
         >
           <img
             src="/favicon.ico"
-            alt="xcompressor app icon"
+            alt="Xcompressor app icon"
             class="size-10 rounded-lg"
           >
-          <span class="text-lg font-semibold text-white">xcompressor</span>
+          <span class="text-lg font-semibold text-white">Xcompressor</span>
         </NuxtLink>
         <div class="flex flex-wrap gap-2">
           <UButton
@@ -306,7 +306,7 @@ function startDownload(url: string) {
             Compress, convert, and shape media without sending it away.
           </h1>
           <p class="mt-6 max-w-2xl text-lg leading-8 text-stone-300">
-            xcompressor is a local-first desktop workspace for video, image, audio, and GIF jobs. Add files, tune the output, run a batch, and keep your media on your machine.
+            Xcompressor is a local-first desktop workspace for video, image, audio, and GIF jobs. Add files, tune the output, run a batch, and keep your media on your machine.
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
             <UButton
@@ -334,7 +334,7 @@ function startDownload(url: string) {
         <div class="mx-auto grid w-full max-w-sm place-items-center">
           <img
             src="/favicon.ico"
-            alt="xcompressor desktop app icon"
+            alt="Xcompressor desktop app icon"
             class="size-48 rounded-lg border border-white/10 bg-stone-950/85 p-8 shadow-2xl sm:size-56"
           >
         </div>
@@ -475,7 +475,7 @@ function startDownload(url: string) {
         </div>
         <div class="space-y-4 text-sm leading-7 text-stone-300">
           <p>
-            xcompressor is made for people who regularly need smaller videos, converted audio, optimized images, or quick GIF clips, but do not want a complicated editor for simple output work.
+            Xcompressor is made for people who regularly need smaller videos, converted audio, optimized images, or quick GIF clips, but do not want a complicated editor for simple output work.
           </p>
           <p>
             The project is open source so users can inspect how media is handled, contributors can improve the workflow, and upstream projects receive visible credit.
