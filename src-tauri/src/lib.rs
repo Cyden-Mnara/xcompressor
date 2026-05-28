@@ -17,6 +17,8 @@ use preview::MediaPreviewServer;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    ffi::OsString,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 use sysinfo::System;

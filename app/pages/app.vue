@@ -1607,6 +1607,26 @@ async function registerBatchListener() {
   })
 }
 
+async function drainNativeOpenPaths(fallbackPaths: string[] = []) {
+  const pendingPaths = await tauriInvoke<string[]>('take_pending_open_paths')
+  const nextPaths = pendingPaths.length ? pendingPaths : fallbackPaths
+
+  if (nextPaths.length) {
+    await addPathsToQueue(nextPaths)
+  }
+}
+
+async function registerNativeOpenFilesListener() {
+  if (unlistenNativeOpenFiles) {
+    return
+  }
+
+  const { listen } = await import('@tauri-apps/api/event')
+  unlistenNativeOpenFiles = await listen<string[]>('native-open-files', ({ payload }) => {
+    void drainNativeOpenPaths(payload)
+  })
+}
+
 async function runBatch() {
   await registerBatchListener()
   const hadActivityQueue = activityQueue.value.length > 0

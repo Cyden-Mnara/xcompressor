@@ -34,6 +34,144 @@
     "resources": [
       "resources"
     ],
+    "fileAssociations": [
+      {
+        "ext": ["mp4"],
+        "name": "MP4 video",
+        "description": "MP4 video file",
+        "role": "Editor",
+        "mimeType": "video/mp4",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["mov"],
+        "name": "QuickTime video",
+        "description": "QuickTime video file",
+        "role": "Editor",
+        "mimeType": "video/quicktime",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["mkv"],
+        "name": "Matroska video",
+        "description": "Matroska video file",
+        "role": "Editor",
+        "mimeType": "video/x-matroska",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["avi"],
+        "name": "AVI video",
+        "description": "AVI video file",
+        "role": "Editor",
+        "mimeType": "video/x-msvideo",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["webm"],
+        "name": "WebM video",
+        "description": "WebM video file",
+        "role": "Editor",
+        "mimeType": "video/webm",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["png"],
+        "name": "PNG image",
+        "description": "PNG image file",
+        "role": "Editor",
+        "mimeType": "image/png",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["jpg", "jpeg"],
+        "name": "JPEG image",
+        "description": "JPEG image file",
+        "role": "Editor",
+        "mimeType": "image/jpeg",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["webp"],
+        "name": "WebP image",
+        "description": "WebP image file",
+        "role": "Editor",
+        "mimeType": "image/webp",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["bmp"],
+        "name": "Bitmap image",
+        "description": "Bitmap image file",
+        "role": "Editor",
+        "mimeType": "image/bmp",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["tiff"],
+        "name": "TIFF image",
+        "description": "TIFF image file",
+        "role": "Editor",
+        "mimeType": "image/tiff",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["mp3"],
+        "name": "MP3 audio",
+        "description": "MP3 audio file",
+        "role": "Editor",
+        "mimeType": "audio/mpeg",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["wav"],
+        "name": "WAV audio",
+        "description": "WAV audio file",
+        "role": "Editor",
+        "mimeType": "audio/wav",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["aac"],
+        "name": "AAC audio",
+        "description": "AAC audio file",
+        "role": "Editor",
+        "mimeType": "audio/aac",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["m4a"],
+        "name": "M4A audio",
+        "description": "M4A audio file",
+        "role": "Editor",
+        "mimeType": "audio/mp4",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["flac"],
+        "name": "FLAC audio",
+        "description": "FLAC audio file",
+        "role": "Editor",
+        "mimeType": "audio/flac",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["opus"],
+        "name": "Opus audio",
+        "description": "Opus audio file",
+        "role": "Editor",
+        "mimeType": "audio/opus",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["ogg"],
+        "name": "Ogg audio",
+        "description": "Ogg audio file",
+        "role": "Editor",
+        "mimeType": "audio/ogg",
+        "rank": "Alternate"
+      }
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
